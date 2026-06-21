@@ -1,2 +1,475 @@
-<h1>こんにちは！</h1>
-<p>GitHub Pages公開テスト成功！</p>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CAR Road GAME</title>
+    <style>
+        :root {
+            --bg-color: #020703;
+            --text-color: #33ff66; 
+            --accent-color: #ff0055;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 画面全体のレトロブラウン管フィルター */
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
+            z-index: 999;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        header {
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 5px 0;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+
+        h1 {
+            margin: 5px 0;
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-shadow: 0 0 10px var(--text-color), 0 0 20px rgba(51, 255, 102, 0.5);
+            letter-spacing: 1px;
+        }
+
+        .status-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            padding: 5px 15px;
+            font-size: 0.95rem;
+            border: 2px solid var(--text-color);
+            background: #000;
+            box-shadow: 0 0 15px rgba(51, 255, 102, 0.2);
+        }
+
+        #game-area {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 60vh;
+            max-height: 520px;
+            border: 3px solid var(--text-color);
+            background-color: #000;
+            overflow: hidden;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            box-shadow: 0 0 25px rgba(51, 255, 102, 0.4);
+        }
+
+        #road-display {
+            width: 100%;
+            white-space: pre;
+            font-size: 3.6vw;
+            line-height: 0.95; /* さらに行間を詰めて超高速スクロールを強調 */
+            text-align: left;
+            margin-bottom: 5px;
+            font-weight: bold;
+            text-shadow: 0 0 3px var(--text-color);
+        }
+
+        @media (min-width: 500px) {
+            #road-display {
+                font-size: 16px;
+            }
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 5, 2, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .overlay h2 {
+            font-size: 2.2rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            text-shadow: 0 0 12px var(--accent-color);
+            letter-spacing: 3px;
+        }
+
+        .overlay p {
+            margin: 5px 0 20px 0;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        button {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            padding: 10px 25px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(51, 255, 102, 0.3);
+        }
+
+        button:hover, button:active {
+            background-color: var(--text-color);
+            color: #000;
+            box-shadow: 0 0 15px var(--text-color);
+        }
+
+        footer {
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            margin-top: auto;
+            padding-bottom: 15px;
+            z-index: 5;
+        }
+
+        .instructions {
+            font-size: 0.8rem;
+            margin: 8px 0;
+            color: #8cba94;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            width: 85%;
+            margin: 0 auto;
+        }
+
+        .btn-touch {
+            width: 75px;
+            height: 75px;
+            font-size: 2.2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            touch-action: manipulation;
+            background: rgba(51, 255, 102, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>CAR Road GAME</h1>
+        <div class="status-container">
+            <div>SCORE: <span id="score">0</span></div>
+            <div>LEVEL: <span id="level">1</span></div>
+            <div>DIST : <span id="distance">0</span>m</div>
+            <div>SPEED: <span id="speed">0</span> km/h</div>
+        </div>
+    </header>
+
+    <div id="game-area">
+        <div id="road-display"></div>
+
+        <div id="start-overlay" class="overlay">
+            <h2>CAR Road GAME</h2>
+            <p>INSERT COIN [SPACE]</p>
+            <button id="start-btn">START GAME</button>
+        </div>
+
+        <div id="gameover-overlay" class="overlay" style="display: none;">
+            <h2>GAME OVER</h2>
+            <p>FINAL SCORE: <span id="final-score">0</span></p>
+            <button id="retry-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <footer>
+        <p class="instructions">【CONTROLS】 PC: [←][→] / SMARTPHONE: TOUCH BUTTON</p>
+        <div class="controls">
+            <button id="btn-left" class="btn-touch">◀</button>
+            <button id="btn-right" class="btn-touch">▶</button>
+        </div>
+    </footer>
+
+    <script>
+        // --- ゲーム設定 ---
+        const DISPLAY_ROWS = 28;     
+        const ROAD_TOTAL_WIDTH = 30; 
+
+        // --- ゲーム状態 ---
+        let gameInterval = null;
+        let isPlaying = false;
+        
+        let score = 0;
+        let distance = 0;
+        let speed = 200; // 初期最高初速をアップ
+        let level = 1;
+
+        let playerX = 15;
+        let roadData = [];
+
+        // 滑らかでダイナミックなロングカーブ用パラメータ（サイン波ベース）
+        let curveTheta = 0;      // 角度（カーブ進行度）
+        let curveTargetAmp = 0;  // ターゲットとするカーブの振幅
+        let currentAmp = 0;      // 現在のカーブ振幅
+        let segmentDuration = 0; // 現在のカーブセクションの残り寿命
+        let nextGateDistance = 1000; // 次に「Run 1,000m」を発生させる距離指標
+
+        let touchTimer = null;
+
+        const roadDisplay = document.getElementById('road-display');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const distanceEl = document.getElementById('distance');
+        const speedEl = document.getElementById('speed');
+        const startOverlay = document.getElementById('start-overlay');
+        const gameoverOverlay = document.getElementById('gameover-overlay');
+        const finalScoreEl = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+
+        function initGame() {
+            score = 0;
+            distance = 0;
+            speed = 200;
+            level = 1;
+            playerX = 15;
+            roadData = [];
+            curveTheta = 0;
+            curveTargetAmp = 0;
+            currentAmp = 0;
+            segmentDuration = 0;
+            nextGateDistance = 1000;
+
+            // 初期位置生成
+            for (let i = 0; i < DISPLAY_ROWS; i++) {
+                roadData.push({ left: 10, width: 10, center: 15, msg: null });
+            }
+
+            updateStatus();
+            render();
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            // 高速スクロールによる走行距離の加算
+            distance += Math.floor(speed / 35);
+            score = distance;
+
+            // 難易度レベル設定
+            level = Math.floor(distance / 350) + 1;
+            speed = 200 + (level - 1) * 35; // レベルごとにガツガツ加速
+            
+            let maxRoadWidth = Math.max(6, 10 - Math.floor(level / 3));
+
+            // ★ロングカーブアルゴリズム（突然曲がらず、じわじわ大きなGがかかる）
+            if (segmentDuration <= 0) {
+                // 直線が続きすぎないよう、高確率(75%)でロングカーブへ、低確率(25%)で一瞬の直線へ
+                if (Math.random() < 0.75) {
+                    // 左右へ大きく振る目標値（レベル上昇でさらに深くなる。最大幅10）
+                    const limit = Math.min(10, 6 + Math.floor(level / 2));
+                    curveTargetAmp = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * (limit - 4));
+                    segmentDuration = 40 + Math.floor(Math.random() * 40); // じっくり長く曲がり続ける
+                } else {
+                    curveTargetAmp = 0; // 緩やかなセンター復帰
+                    segmentDuration = 15 + Math.floor(Math.random() * 15); // 直線は短め
+                }
+            }
+            segmentDuration--;
+
+            // 現在の振幅を緩やかに変化させる（急カーブ化を抑止、滑らかなうねりを形成）
+            currentAmp += (curveTargetAmp - currentAmp) * 0.08;
+            
+            // サイン波を少しブレンドし、滑らかで美しいワインディングロードを表現
+            curveTheta += 0.05;
+            let centerFloat = 15.0 + currentAmp + (Math.sin(curveTheta) * (currentAmp === 0 ? 0 : 0.5));
+
+            const currentWidth = maxRoadWidth;
+            let leftEdge = Math.round(centerFloat - (currentWidth / 2));
+            
+            if (leftEdge < 1) leftEdge = 1;
+            if (leftEdge + currentWidth >= ROAD_TOTAL_WIDTH - 1) {
+                leftEdge = ROAD_TOTAL_WIDTH - 1 - currentWidth;
+            }
+
+            // ★1,000mごとの「Run 1,000m」表示・難易度上乗せ判定
+            let rowMessage = null;
+            if (distance >= nextGateDistance) {
+                rowMessage = `Run ${nextGateDistance}m`;
+                nextGateDistance += 1000;
+                // ゲート通過時にスピードと難易度を強制ボーナスUP
+                speed += 25; 
+            }
+
+            roadData.push({ 
+                left: leftEdge, 
+                width: currentWidth, 
+                center: Math.round(centerFloat),
+                msg: rowMessage
+            });
+            roadData.shift();
+
+            // 当たり判定
+            const playerRow = roadData[0]; 
+            const rightEdge = playerRow.left + playerRow.width;
+
+            if (playerX <= playerRow.left || playerX >= rightEdge) {
+                gameOver();
+                return;
+            }
+
+            updateStatus();
+            render();
+        }
+
+        function updateStatus() {
+            scoreEl.textContent = score;
+            levelEl.textContent = level;
+            distanceEl.textContent = distance;
+            speedEl.textContent = speed;
+        }
+
+        function render() {
+            let displayHTML = "";
+
+            for (let i = DISPLAY_ROWS - 1; i >= 0; i--) {
+                const row = roadData[i];
+                let lineArr = new Array(ROAD_TOTAL_WIDTH).fill(" ");
+
+                // ゲートメッセージがある場合は道路中央付近に優先描写
+                if (row.msg) {
+                    const text = `--- ${row.msg} ---`;
+                    let startPos = Math.max(0, Math.floor((ROAD_TOTAL_WIDTH - text.length) / 2));
+                    for(let charIdx=0; charIdx<text.length; charIdx++) {
+                        if(startPos + charIdx < ROAD_TOTAL_WIDTH) {
+                            lineArr[startPos + charIdx] = `<span style='color:#fff; background:${varAccentColor()}; font-weight:bold;'>${text[charIdx]}</span>`;
+                        }
+                    }
+                } else {
+                    // 通常の道路境界
+                    lineArr[row.left] = "|";
+                    lineArr[row.left + row.width] = "|";
+
+                    // 超高速を際立たせるためのセンターライン描画
+                    if ((distance + i) % 2 === 0) {
+                        const mid = row.center;
+                        if (mid > row.left && mid < row.left + row.width) {
+                            lineArr[mid] = "<span style='color: rgba(51, 255, 102, 0.4);'>.</span>";
+                        }
+                    }
+                }
+
+                // プレイヤーの車
+                if (i === 0) {
+                    if (playerX >= 0 && playerX < ROAD_TOTAL_WIDTH) {
+                        lineArr[playerX] = "<span style='color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); font-weight:900;'>▲</span>";
+                    }
+                }
+
+                displayHTML += lineArr.join("") + "\n";
+            }
+
+            roadDisplay.innerHTML = displayHTML;
+        }
+
+        function varAccentColor() {
+            return getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+        }
+
+        function startGame() {
+            if (isPlaying) return;
+            isPlaying = true;
+            startOverlay.style.display = "none";
+            gameoverOverlay.style.display = "none";
+            initGame();
+            // 50ms から 33ms (約30fps) へ大幅に描画を高速化！！
+            gameInterval = setInterval(gameLoop, 33);
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            clearInterval(touchTimer);
+            finalScoreEl.textContent = score;
+            gameoverOverlay.style.display = "flex";
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!isPlaying) {
+                if (e.code === "Space") startGame();
+                return;
+            }
+
+            if (e.key === "ArrowLeft" || e.key === "Left") {
+                playerX = Math.max(0, playerX - 1);
+                render();
+            } else if (e.key === "ArrowRight" || e.key === "Right") {
+                playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
+                render();
+            }
+        });
+
+        // 30fps駆動に合わせて、スマホ長押しリピート処理も最速化
+        function startMove(direction) {
+            if (!isPlaying) return;
+            
+            if (direction === 'left') playerX = Math.max(0, playerX - 1);
+            else playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
+            render();
+
+            clearInterval(touchTimer);
+            touchTimer = setInterval(() => {
+                if (direction === 'left') playerX = Math.max(0, playerX - 1);
+                else playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
+                render();
+            }, 25); 
+        }
+
+        function stopMove() {
+            clearInterval(touchTimer);
+        }
+
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('left'); });
+        btnLeft.addEventListener('touchend', stopMove);
+        btnLeft.addEventListener('mousedown', () => startMove('left'));
+        btnLeft.addEventListener('mouseup', stopMove);
+        btnLeft.addEventListener('mouseleave', stopMove);
+
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('right'); });
+        btnRight.addEventListener('touchend', stopMove);
+        btnRight.addEventListener('mousedown', () => startMove('right'));
+        btnRight.addEventListener('mouseup', stopMove);
+        btnRight.addEventListener('mouseleave', stopMove);
+
+        startBtn.addEventListener('click', startGame);
+        retryBtn.addEventListener('click', startGame);
+
+        initGame();
+    </script>
+</body>
+</html>
