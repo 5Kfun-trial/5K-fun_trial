@@ -93,41 +93,51 @@
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end; 
+            justify-content: flex-end; /* 下部（車側）を基準に道路を配置 */
             box-shadow: 0 0 25px rgba(51, 255, 102, 0.4);
+            transition: background-color 0.1s, border-color 0.1s;
         }
 
-        /* 画面全体の高さに合わせてフォントサイズを追従 */
+        /* 破壊時の横ブレと赤画面化エフェクト */
+        @keyframes crash-shake {
+            0% { transform: translate(0, 0); }
+            10% { transform: translate(-12px, 0); }
+            20% { transform: translate(12px, 0); }
+            30% { transform: translate(-10px, 0); }
+            40% { transform: translate(10px, 0); }
+            50% { transform: translate(-7px, 0); }
+            60% { transform: translate(7px, 0); }
+            70% { transform: translate(-4px, 0); }
+            80% { transform: translate(4px, 0); }
+            90% { transform: translate(-1px, 0); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .crash-shake {
+            animation: crash-shake 0.5s ease-out;
+        }
+
+        .crash-red {
+            background-color: #66000c !important;
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 35px var(--accent-color) !important;
+        }
+
+        /* 道路表示：文字サイズを適切な大きさに保ちつつ、横幅はみ出しのみを動的に防止 */
         #road-display {
             width: 100%;
             white-space: pre;
-            font-size: 3.2vw; 
-            line-height: 0.90; 
+            font-size: min(3.4vw, 15px); 
+            line-height: 0.88; 
             text-align: left;
             margin-bottom: 2px;
             font-weight: bold;
             text-shadow: 0 0 3px var(--text-color);
         }
 
-        /* 縦幅制限スマホ向けの超強力な文字圧縮セーフティ */
-        @media (max-height: 780px) {
-            #road-display {
-                font-size: 1.7vh; 
-                line-height: 0.88;
-            }
-        }
         @media (max-height: 600px) {
-            #road-display {
-                font-size: 1.5vh;
-                line-height: 0.85;
-            }
             h1 { font-size: 1.1rem; }
             .status-container { font-size: 0.7rem; }
-        }
-        @media (min-width: 450px) and (min-height: 781px) {
-            #road-display {
-                font-size: 14.5px;
-            }
         }
 
         /* オーバーレイ */
@@ -156,7 +166,7 @@
             letter-spacing: 1px;
         }
 
-        /* ★下部固定のフッターエリア（絶対に隠さない・潰さない） */
+        /* 下部固定のフッターエリア */
         footer {
             width: 100%;
             max-width: 400px;
@@ -195,7 +205,7 @@
             box-shadow: 0 0 20px var(--text-color);
         }
 
-        /* ★新規：スコアデータ表示エリア（左右分割レイアウト） */
+        /* スコアデータ表示エリア（左右分割レイアウト） */
         .score-board-container {
             display: flex;
             justify-content: space-between;
@@ -248,17 +258,50 @@
             margin: 0 auto;
         }
 
+        /* 操作ボタン：共通デザインを整え、鮮やかにリデザイン */
         .btn-touch {
-            width: 60px;
-            height: 60px;
-            font-size: 1.5rem;
+            width: 62px;
+            height: 62px;
+            font-size: 1.6rem;
             display: flex;
             justify-content: center;
             align-items: center;
             border-radius: 50%;
             touch-action: manipulation;
-            background: rgba(51, 255, 102, 0.12); 
-            box-shadow: 0 0 10px rgba(51, 255, 102, 0.2);
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+
+        /* 左ボタン：鮮やかなネオンシアン（水色） */
+        #btn-left {
+            background: rgba(0, 240, 255, 0.15);
+            border: 2px solid #00f0ff;
+            color: #00f0ff;
+            text-shadow: 0 0 8px #00f0ff;
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+        }
+        #btn-left:active {
+            background: #00f0ff;
+            color: #000;
+            box-shadow: 0 0 25px #00f0ff;
+            text-shadow: none;
+        }
+
+        /* 右ボタン：鮮やかなネオンピンク（マゼンタ） */
+        #btn-right {
+            background: rgba(255, 0, 85, 0.15);
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            text-shadow: 0 0 8px var(--accent-color);
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.3);
+        }
+        #btn-right:active {
+            background: var(--accent-color);
+            color: #000;
+            box-shadow: 0 0 25px var(--accent-color);
+            text-shadow: none;
         }
     </style>
 </head>
@@ -311,18 +354,30 @@
     </footer>
 
     <script>
-        const DISPLAY_ROWS = 28;     
+        // 画面最上部まで綺麗に隙間なく埋めるため、道路の行数を 28行 から 42行 へ拡張
+        const DISPLAY_ROWS = 42;     
         const ROAD_TOTAL_WIDTH = 30; 
 
-        let gameInterval = null;
+        // アニメーションループ管理用（HTML5 requestAnimationFrame）
         let isPlaying = false;
-        
+        let lastTime = 0;
+        let accumTime = 0;
+        const stepTime = 33; // ゲームステップ処理は33ms周期
+
         let score = 0;
         let distance = 0;
         let speed = 200; 
         let level = 1;
 
-        let playerX = 15;
+        // ★スムーズな慣性移動のための変数設計
+        let playerX = 15.0;
+        let playerVX = 0.0;     // 左右の現在の速度
+        const ACCEL = 0.06;     // キー/ボタン押下時の加速スピード
+        const DECEL = 0.12;     // キー/ボタンを離した時の減速（摩擦）スピード
+        const MAX_SPEED = 0.36; // 押し続けた時の最大速度（カーブを楽に曲がりきれる速度）
+
+        const keysPressed = { left: false, right: false };
+
         let roadData = [];
 
         let curveTheta = 0;      
@@ -331,12 +386,17 @@
         let segmentDuration = 0; 
         let nextGateDistance = 1000; 
 
-        let touchTimer = null;
+        // 音声エンジン用（Web Audio API）
+        let audioCtx = null;
+        let engineOsc = null;
+        let engineFilter = null;
+        let engineGain = null;
 
-        // ★スコアシステム用のローカルストレージ変数
+        // スコアデータ
         let hiScore = parseInt(localStorage.getItem('car_road_hi_score')) || 0;
         let scoreHistory = JSON.parse(localStorage.getItem('car_road_history')) || [];
 
+        const gameArea = document.getElementById('game-area');
         const roadDisplay = document.getElementById('road-display');
         const scoreEl = document.getElementById('score');
         const levelEl = document.getElementById('level');
@@ -350,7 +410,6 @@
         const btnLeft = document.getElementById('btn-left');
         const btnRight = document.getElementById('btn-right');
         
-        // 新規追加要素の取得
         const hiScoreDisplay = document.getElementById('hi-score-display');
         const historyDisplay = document.getElementById('history-display');
 
@@ -359,7 +418,8 @@
             distance = 0;
             speed = 200;
             level = 1;
-            playerX = 15;
+            playerX = 15.0;
+            playerVX = 0.0;
             roadData = [];
             curveTheta = 0;
             curveTargetAmp = 0;
@@ -368,16 +428,109 @@
             nextGateDistance = 1000;
 
             for (let i = 0; i < DISPLAY_ROWS; i++) {
-                roadData.push({ left: 10, width: 10, center: 15, msg: null });
+                roadData.push({ left: 10, width: 10, center: 15, centerFloat: 15.0, msg: null });
             }
 
-            // ハイスコアと履歴ボードを初期描画
             loadAndRenderScoreBoard();
             updateStatus();
             render();
         }
 
-        // ★ハイスコアと履歴を読み込んで描画する関数
+        // Web Audio APIの初期化
+        function initAudio() {
+            if (audioCtx) return;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            audioCtx = new AudioContextClass();
+            
+            // エンジン低音用のフィルター
+            engineFilter = audioCtx.createBiquadFilter();
+            engineFilter.type = 'lowpass';
+            engineFilter.frequency.setValueAtTime(150, audioCtx.currentTime);
+            
+            // 音量調整用
+            engineGain = audioCtx.createGain();
+            engineGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+            
+            engineFilter.connect(engineGain);
+            engineGain.connect(audioCtx.destination);
+        }
+
+        // エンジン発振器の開始
+        function startEngineSound() {
+            if (!audioCtx) return;
+            stopEngineSound();
+            
+            engineOsc = audioCtx.createOscillator();
+            engineOsc.type = 'sawtooth'; // 鋸歯状波
+            engineOsc.connect(engineFilter);
+            engineOsc.start(0);
+            
+            engineGain.gain.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
+        }
+
+        // エンジン音の更新
+        function updateEngineSound() {
+            if (!audioCtx || !engineOsc || !isPlaying) return;
+            
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            
+            let baseFreq = 38 + (speed - 200) * 0.14; 
+            let jitter = Math.sin(Date.now() * 0.06) * 1.5; 
+            
+            engineOsc.frequency.setTargetAtTime(baseFreq + jitter, audioCtx.currentTime, 0.1);
+            
+            let filterFreq = 120 + (speed - 200) * 0.45;
+            engineFilter.frequency.setTargetAtTime(filterFreq, audioCtx.currentTime, 0.1);
+        }
+
+        // エンジン音の停止
+        function stopEngineSound() {
+            if (engineOsc) {
+                try {
+                    engineOsc.stop();
+                } catch(e) {}
+                engineOsc.disconnect();
+                engineOsc = null;
+            }
+            if (engineGain) {
+                engineGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            }
+        }
+
+        // 壁破壊時の爆発・クラッシュ音
+        function playCrashSound() {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const bufferSize = audioCtx.sampleRate * 0.5; 
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+            
+            const noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = buffer;
+            
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.setValueAtTime(280, audioCtx.currentTime);
+            noiseFilter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.45);
+            
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+            
+            noiseNode.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            
+            noiseNode.start();
+        }
+
         function loadAndRenderScoreBoard() {
             hiScoreDisplay.textContent = hiScore;
             
@@ -392,13 +545,49 @@
             }
         }
 
-        function gameLoop() {
+        // ★マイルドな慣性によるスムーズな左右移動計算
+        function updatePlayerPosition() {
+            if (!isPlaying) return;
+
+            let targetDir = 0;
+            if (keysPressed.left) targetDir -= 1;
+            if (keysPressed.right) targetDir += 1;
+
+            if (targetDir !== 0) {
+                // 指標方向に向けて加速
+                playerVX += targetDir * ACCEL;
+                if (Math.abs(playerVX) > MAX_SPEED) {
+                    playerVX = Math.sign(playerVX) * MAX_SPEED;
+                }
+            } else {
+                // 入力なし時に摩擦でスムーズに減速
+                if (playerVX > 0) {
+                    playerVX = Math.max(0, playerVX - DECEL);
+                } else if (playerVX < 0) {
+                    playerVX = Math.min(0, playerVX + DECEL);
+                }
+            }
+
+            playerX += playerVX;
+
+            // 画面外はみ出し防止
+            if (playerX < 0.5) {
+                playerX = 0.5;
+                playerVX = 0.0;
+            }
+            if (playerX > ROAD_TOTAL_WIDTH - 1.5) {
+                playerX = ROAD_TOTAL_WIDTH - 1.5;
+                playerVX = 0.0;
+            }
+        }
+
+        // ゲームステップ処理
+        function progressGameStep() {
             if (!isPlaying) return;
 
             distance += Math.floor(speed / 35);
             score = distance;
 
-            // リアルタイムでハイスコアを超えたらリアルタイム表記更新！
             if (score > hiScore) {
                 hiScore = score;
                 hiScoreDisplay.textContent = hiScore;
@@ -411,27 +600,41 @@
 
             if (segmentDuration <= 0) {
                 if (Math.random() < 0.75) {
-                    const limit = Math.min(10, 6 + Math.floor(level / 2));
-                    curveTargetAmp = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * (limit - 4));
-                    segmentDuration = 40 + Math.floor(Math.random() * 40); 
+                    const limit = Math.min(9, 5 + Math.floor(level / 2.5));
+                    curveTargetAmp = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * (limit - 3));
+                    segmentDuration = 35 + Math.floor(Math.random() * 35); 
                 } else {
                     curveTargetAmp = 0; 
-                    segmentDuration = 15 + Math.floor(Math.random() * 15); 
+                    segmentDuration = 12 + Math.floor(Math.random() * 12); 
                 }
             }
             segmentDuration--;
 
-            currentAmp += (curveTargetAmp - currentAmp) * 0.08;
+            currentAmp += (curveTargetAmp - currentAmp) * 0.04; // 移行スピードを少し下げてマイルド化
             
-            curveTheta += 0.05;
-            let centerFloat = 15.0 + currentAmp + (Math.sin(curveTheta) * (currentAmp === 0 ? 0 : 0.5));
+            curveTheta += 0.04;
+            let nextCenterFloat = 15.0 + currentAmp + (Math.sin(curveTheta) * (currentAmp === 0 ? 0 : 0.4));
+
+            // ★ 道路の1ステップでの変化幅（急さ）を最大 0.13 文字分に厳しく制限して超マイルドな曲線にリファイン
+            const maxShiftPerStep = 0.13;
+            let lastRow = roadData[roadData.length - 1];
+            let lastCenterFloat = lastRow ? lastRow.centerFloat : 15.0;
+            
+            let shift = nextCenterFloat - lastCenterFloat;
+            if (Math.abs(shift) > maxShiftPerStep) {
+                nextCenterFloat = lastCenterFloat + Math.sign(shift) * maxShiftPerStep;
+            }
 
             const currentWidth = maxRoadWidth;
-            let leftEdge = Math.round(centerFloat - (currentWidth / 2));
+            let leftEdge = Math.round(nextCenterFloat - (currentWidth / 2));
             
-            if (leftEdge < 1) leftEdge = 1;
+            if (leftEdge < 1) {
+                leftEdge = 1;
+                nextCenterFloat = leftEdge + (currentWidth / 2);
+            }
             if (leftEdge + currentWidth >= ROAD_TOTAL_WIDTH - 1) {
                 leftEdge = ROAD_TOTAL_WIDTH - 1 - currentWidth;
+                nextCenterFloat = leftEdge + (currentWidth / 2);
             }
 
             let rowMessage = null;
@@ -444,21 +647,54 @@
             roadData.push({ 
                 left: leftEdge, 
                 width: currentWidth, 
-                center: Math.round(centerFloat),
+                center: Math.round(nextCenterFloat),
+                centerFloat: nextCenterFloat,
                 msg: rowMessage
             });
             roadData.shift();
 
-            const playerRow = roadData[0]; 
-            const rightEdge = playerRow.left + playerRow.width;
+            updateStatus();
+        }
 
-            if (playerX <= playerRow.left || playerX >= rightEdge) {
+        // 壁との衝突チェック
+        function checkCollision() {
+            if (!isPlaying) return;
+            const playerRow = roadData[0]; 
+            if (!playerRow) return;
+            const rightEdge = playerRow.left + playerRow.width;
+            const pX = Math.round(playerX);
+
+            if (pX <= playerRow.left || pX >= rightEdge) {
                 gameOver();
-                return;
+            }
+        }
+
+        // HTML5 requestAnimationFrame 対応のメインゲームループ
+        function gameLoopRAF(timestamp) {
+            if (!isPlaying) return;
+
+            if (!lastTime) lastTime = timestamp;
+            let deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            if (deltaTime > 100) deltaTime = 33;
+
+            accumTime += deltaTime;
+
+            updatePlayerPosition();
+
+            while (accumTime >= stepTime) {
+                progressGameStep();
+                accumTime -= stepTime;
             }
 
-            updateStatus();
-            render();
+            checkCollision();
+
+            if (isPlaying) {
+                render();
+                updateEngineSound();
+                requestAnimationFrame(gameLoopRAF);
+            }
         }
 
         function updateStatus() {
@@ -496,8 +732,9 @@
                 }
 
                 if (i === 0) {
-                    if (playerX >= 0 && playerX < ROAD_TOTAL_WIDTH) {
-                        lineArr[playerX] = "<span style='color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); font-weight:900;'>▲</span>";
+                    const pX = Math.round(playerX);
+                    if (pX >= 0 && pX < ROAD_TOTAL_WIDTH) {
+                        lineArr[pX] = "<span style='color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); font-weight:900;'>▲</span>";
                     }
                 }
 
@@ -513,36 +750,49 @@
 
         function startGame() {
             if (isPlaying) return;
+            
+            initAudio();
+            startEngineSound();
+
             isPlaying = true;
             startOverlay.style.display = "none";
             gameoverOverlay.style.display = "none";
             startBtn.style.display = "none";
             retryBtn.style.display = "none";
+            
+            gameArea.classList.remove('crash-shake', 'crash-red');
+
             initGame();
-            gameInterval = setInterval(gameLoop, 33);
+            
+            lastTime = 0;
+            accumTime = 0;
+            requestAnimationFrame(gameLoopRAF);
         }
 
         function gameOver() {
             isPlaying = false;
-            clearInterval(gameInterval);
-            clearInterval(touchTimer);
+            
+            stopEngineSound();
+            playCrashSound();
+
+            gameArea.classList.add('crash-shake', 'crash-red');
+            setTimeout(() => {
+                gameArea.classList.remove('crash-shake');
+            }, 500);
+
             finalScoreEl.textContent = score;
             
-            // ★スコア保存・更新処理
-            // ハイスコアの永続保存
             if (score >= hiScore) {
                 hiScore = score;
                 localStorage.setItem('car_road_hi_score', hiScore);
             }
             
-            // 過去の履歴を配列の先頭に追加し、10個を超えたら古いものを削除
             scoreHistory.unshift(score);
             if (scoreHistory.length > 10) {
                 scoreHistory.pop();
             }
             localStorage.setItem('car_road_history', JSON.stringify(scoreHistory));
 
-            // ボードの再描画
             loadAndRenderScoreBoard();
 
             gameoverOverlay.style.display = "flex";
@@ -557,44 +807,32 @@
             }
 
             if (e.key === "ArrowLeft" || e.key === "Left") {
-                playerX = Math.max(0, playerX - 1);
-                render();
+                keysPressed.left = true;
             } else if (e.key === "ArrowRight" || e.key === "Right") {
-                playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
-                render();
+                keysPressed.right = true;
             }
         });
 
-        function startMove(direction) {
-            if (!isPlaying) return;
-            
-            if (direction === 'left') playerX = Math.max(0, playerX - 1);
-            else playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
-            render();
+        window.addEventListener('keyup', (e) => {
+            if (e.key === "ArrowLeft" || e.key === "Left") {
+                keysPressed.left = false;
+            } else if (e.key === "ArrowRight" || e.key === "Right") {
+                keysPressed.right = false;
+            }
+        });
 
-            clearInterval(touchTimer);
-            touchTimer = setInterval(() => {
-                if (direction === 'left') playerX = Math.max(0, playerX - 1);
-                else playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
-                render();
-            }, 25); 
-        }
+        // モバイル等のタッチボタン入力の統一制御
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed.left = true; });
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed.left = false; });
+        btnLeft.addEventListener('mousedown', () => { keysPressed.left = true; });
+        btnLeft.addEventListener('mouseup', () => { keysPressed.left = false; });
+        btnLeft.addEventListener('mouseleave', () => { keysPressed.left = false; });
 
-        function stopMove() {
-            clearInterval(touchTimer);
-        }
-
-        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('left'); });
-        btnLeft.addEventListener('touchend', stopMove);
-        btnLeft.addEventListener('mousedown', () => startMove('left'));
-        btnLeft.addEventListener('mouseup', stopMove);
-        btnLeft.addEventListener('mouseleave', stopMove);
-
-        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('right'); });
-        btnRight.addEventListener('touchend', stopMove);
-        btnRight.addEventListener('mousedown', () => startMove('right'));
-        btnRight.addEventListener('mouseup', stopMove);
-        btnRight.addEventListener('mouseleave', stopMove);
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed.right = true; });
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed.right = false; });
+        btnRight.addEventListener('mousedown', () => { keysPressed.right = true; });
+        btnRight.addEventListener('mouseup', () => { keysPressed.right = false; });
+        btnRight.addEventListener('mouseleave', () => { keysPressed.right = false; });
 
         startBtn.addEventListener('click', startGame);
         retryBtn.addEventListener('click', startGame);
