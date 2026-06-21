@@ -125,6 +125,85 @@
         }
 
         /* ----------------------------------
+         * QRコードセクション
+         * ---------------------------------- */
+        .qr-container {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1500;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .qr-label {
+            font-size: 0.7rem;
+            letter-spacing: 3px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px var(--neon-blue);
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .qr-wrapper {
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            border-radius: 4px;
+            cursor: pointer; /* クリック可能であることを示す */
+            transition: transform 0.2s ease;
+        }
+        .qr-wrapper:active {
+            transform: scale(0.95);
+        }
+        .qr-code-img {
+            width: 70px;
+            height: 70px;
+            display: block;
+            filter: brightness(1.1) contrast(1.1);
+        }
+
+        /* ★追加：QRコード拡大モーダル用スタイル */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000; /* 走査線(9999)より上に配置 */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            cursor: zoom-out;
+            justify-content: center;
+            align-items: center;
+        }
+        .qr-modal-content {
+            max-width: 80%;
+            max-height: 80%;
+            border: 3px solid var(--neon-blue);
+            box-shadow: 0 0 30px var(--neon-blue);
+            border-radius: 8px;
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        .qr-modal-close {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* ----------------------------------
          * ヒーローヘッダー (共通スタイル)
          * ---------------------------------- */
         header {
@@ -244,7 +323,7 @@
             box-shadow: 0 0 15px var(--neon-purple);
         }
 
-        /* ★追加：他のGAMEへのボタン */
+        /* 他のGAMEへのボタン */
         .btn-scroll-other {
             font-size: 1.0rem;
             font-family: inherit;
@@ -416,7 +495,12 @@
             h2 { font-size: 1.5rem; }
             .btn-play-now { font-size: 1.1rem; padding: 12px 30px; }
             .btn-scroll-desc, .btn-scroll-other { font-size: 0.85rem; padding: 6px 20px; }
-            .nav-menu { width: 100%; right: -100%; } 
+            .nav-menu { width: 100%; right: -100%; }
+            
+            /* モバイルではQRコードを少し下げてバーガーボタンとの干渉を防ぐ */
+            .qr-container {
+                top: 70px;
+            }
         }
     </style>
 </head>
@@ -436,6 +520,14 @@
 
     <!-- GAME 1: CAR ROAD GAME -->
     <header id="home" class="theme-car">
+        <!-- QRコードセクション -->
+        <div class="qr-container">
+            <p class="qr-label">-- SCAN TO PLAY --</p>
+            <div class="qr-wrapper" id="qrTrigger">
+                <img src="5kfun_trial_qr.png" alt="QR Code" class="qr-code-img">
+            </div>
+        </div>
+
         <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
         <h1>CAR Road GAME<br><span style="color:var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink);">OFFICIAL</span></h1>
         <p class="tagline">80年代ゲームセンターの熱狂が、ブラウザ上で超高速駆動する。君は迫り来るロングカーブを生き残れるか。</p>
@@ -523,6 +615,12 @@
     </footer>
 
     <div class="scroll-top-btn" id="scrollTopBtn">▲</div>
+
+    <!-- ★追加：QRコード拡大モーダル -->
+    <div id="qrModal" class="qr-modal">
+        <span class="qr-modal-close" id="qrClose">&times;</span>
+        <img class="qr-modal-content" id="qrModalImg">
+    </div>
 
 
     <script>
@@ -613,6 +711,28 @@
 
         sections.forEach(section => {
             sectionObserver.observe(section);
+        });
+
+        // ★追加：QRコード拡大モーダルの制御
+        const qrTrigger = document.getElementById('qrTrigger');
+        const qrModal = document.getElementById('qrModal');
+        const qrModalImg = document.getElementById('qrModalImg');
+        const qrClose = document.getElementById('qrClose');
+        const qrCodeImg = document.querySelector('.qr-code-img');
+
+        // QRコードをクリックしたらモーダルを表示
+        qrTrigger.addEventListener('click', () => {
+            qrModal.style.display = 'flex';
+            qrModalImg.src = qrCodeImg.src;
+        });
+
+        // モーダル内のどこか、または×ボタンをクリックしたら閉じる
+        qrModal.addEventListener('click', () => {
+            qrModal.style.display = 'none';
+        });
+        qrClose.addEventListener('click', (e) => {
+            e.stopPropagation(); // 親要素(modal)へのクリックイベント伝播を防ぐ
+            qrModal.style.display = 'none';
         });
     </script>
 </body>
