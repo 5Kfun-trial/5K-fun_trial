@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAR Road GAME - OFFICIAL PORTAL</title>
+    <title>RETRO ARCADE PORTAL - OFFICIAL</title>
     
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
@@ -13,6 +13,7 @@
             --neon-green: #33ff66;
             --neon-pink: #ff0055;
             --neon-blue: #00f0ff;
+            --neon-purple: #bc13fe;
             --text-muted: #7fa886;
         }
 
@@ -57,7 +58,7 @@
         }
 
         /* ----------------------------------
-         * ハンバーガーメニュー (バーガーリンク)
+         * ハンバーガーメニュー
          * ---------------------------------- */
         .burger-btn {
             position: fixed;
@@ -124,7 +125,7 @@
         }
 
         /* ----------------------------------
-         * ヒーローヘッダー (メインビジュアル)
+         * ヒーローヘッダー (共通スタイル)
          * ---------------------------------- */
         header {
             height: 100vh;
@@ -133,10 +134,22 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            background: radial-gradient(circle, rgba(2,20,5,1) 0%, rgba(1,5,2,1) 100%);
             border-bottom: 4px double var(--neon-green);
             padding: 20px;
             position: relative;
+            transition: all 0.5s ease;
+        }
+
+        /* CAR GAME用テーマ */
+        .theme-car {
+            background: radial-gradient(circle, rgba(2,20,5,1) 0%, rgba(1,5,2,1) 100%);
+        }
+
+        /* SPACE SHOOTER用テーマ */
+        .theme-space {
+            background: radial-gradient(circle, rgba(5,10,30,1) 0%, rgba(1,5,15,1) 100%);
+            border-bottom-color: var(--neon-blue);
+            color: var(--neon-blue);
         }
 
         .welcome-text {
@@ -157,6 +170,9 @@
             line-height: 1.1;
             margin-bottom: 20px;
         }
+        .theme-space h1 {
+            text-shadow: 0 0 10px var(--neon-blue), 0 0 30px var(--neon-blue), 0 0 50px var(--neon-blue);
+        }
 
         .tagline {
             font-size: 1.1rem;
@@ -166,7 +182,6 @@
             font-weight: bold;
         }
 
-        /* ★メインアクションボタンエリア */
         .hero-buttons {
             display: flex;
             flex-direction: column;
@@ -192,11 +207,15 @@
             animation: pulse 2s infinite ease-in-out;
             transition: all 0.2s ease;
         }
+        .theme-space .btn-play-now {
+            background-color: var(--neon-blue);
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
         .btn-play-now:active {
             transform: scale(0.96);
         }
 
-        /* ★新設：ゲームの説明ボタン（古いテキストUI風なのにふわっと光る） */
+        /* 説明ボタン */
         .btn-scroll-desc {
             font-size: 1.0rem;
             font-family: inherit;
@@ -209,10 +228,39 @@
             box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
             transition: all 0.3s ease;
         }
+        .theme-space .btn-scroll-desc {
+            color: var(--neon-purple);
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 8px rgba(188, 19, 254, 0.3);
+        }
         .btn-scroll-desc:hover, .btn-scroll-desc:active {
             color: #000;
             background-color: var(--neon-blue);
             box-shadow: 0 0 15px var(--neon-blue);
+            border-color: #fff;
+        }
+        .theme-space .btn-scroll-desc:hover {
+            background-color: var(--neon-purple);
+            box-shadow: 0 0 15px var(--neon-purple);
+        }
+
+        /* ★追加：他のGAMEへのボタン */
+        .btn-scroll-other {
+            font-size: 1.0rem;
+            font-family: inherit;
+            color: var(--neon-pink);
+            background: transparent;
+            border: 1px solid var(--neon-pink);
+            padding: 8px 25px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 0 8px rgba(255, 0, 85, 0.3);
+            transition: all 0.3s ease;
+        }
+        .btn-scroll-other:hover, .btn-scroll-other:active {
+            color: #000;
+            background-color: var(--neon-pink);
+            box-shadow: 0 0 15px var(--neon-pink);
             border-color: #fff;
         }
 
@@ -315,7 +363,7 @@
         }
 
         /* ----------------------------------
-         * ▲ 上に戻るボタン (スクロール連動)
+         * ▲ 上に戻るボタン
          * ---------------------------------- */
         .scroll-top-btn {
             position: fixed;
@@ -367,7 +415,7 @@
             .tagline { font-size: 0.95rem; }
             h2 { font-size: 1.5rem; }
             .btn-play-now { font-size: 1.1rem; padding: 12px 30px; }
-            .btn-scroll-desc { font-size: 0.85rem; padding: 6px 20px; }
+            .btn-scroll-desc, .btn-scroll-other { font-size: 0.85rem; padding: 6px 20px; }
             .nav-menu { width: 100%; right: -100%; } 
         }
     </style>
@@ -381,26 +429,41 @@
     </div>
 
     <nav class="nav-menu" id="navMenu">
-        <a href="#" class="nav-item">HOME</a>
-        <a href="#description" class="nav-item">GAME DESCRIPTION</a>
+        <a href="#home" class="nav-item">CAR ROAD</a>
+        <a href="#space-shooter" class="nav-item">SPACE SHOOTER</a>
         <a href="#disclaimer" class="nav-item">DISCLAIMER</a>
     </nav>
 
-    <header id="home">
+    <!-- GAME 1: CAR ROAD GAME -->
+    <header id="home" class="theme-car">
         <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
         <h1>CAR Road GAME<br><span style="color:var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink);">OFFICIAL</span></h1>
         <p class="tagline">80年代ゲームセンターの熱狂が、ブラウザ上で超高速駆動する。君は迫り来るロングカーブを生き残れるか。</p>
         
         <div class="hero-buttons">
             <button class="btn-play-now" onclick="window.location.href='Car Road Game.html'">PLAY GAME NOW</button>
-            <button class="btn-scroll-desc" id="scrollDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-desc" id="scrollCarDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 2: SPACE SHOOTER GAME -->
+    <header id="space-shooter" class="theme-space">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>Space Shooter GAME<br><span style="color:var(--neon-purple); text-shadow: 0 0 10px var(--neon-purple);">OFFICIAL</span></h1>
+        <p class="tagline">80年代ゲームセンターの熱狂が、ブラウザ上で超高速駆動する。君は迫り来る敵の攻撃を潜り生き残れるか。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='Space Shooter Game.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollSpaceDescBtn">【ゲームの説明】</button>
         </div>
     </header>
 
     <div class="container">
 
-        <section id="description">
-            <h2>ゲームの説明</h2>
+        <!-- CAR GAME Description -->
+        <section id="car-description">
+            <h2>CAR Road GAME の説明</h2>
             <p>『CAR Road GAME』は、古き良きテキストアート（アスキーアート）の表現技法を用いながら、秒間30フレームを超える超高速演算処理によって構築された、全く新しい超カジュアル・レーシングサバイバルゲームです。</p>
             <p>プレイヤーは、自動で過激にうねり出すデジタル・ロードの壁に激突しないよう、自車（▲）を巧みに操り、限界の走行距離（メートル）に挑みます。</p>
             
@@ -420,6 +483,28 @@
             </div>
         </section>
 
+        <!-- SPACE SHOOTER Description -->
+        <section id="space-description">
+            <h2>Space Shooter GAME の説明</h2>
+            <p>『Space Shooter GAME』は、無限に広がるデジタル・コスモスを舞台にした、超高速弾幕サバイバル・シューティングです。レトロなドット表現と現代的な計算処理が融合し、心地よい緊張感を提供します。</p>
+            <p>押し寄せる敵の波を撃破し、回避し、宇宙の深淵へと突き進んでください。一瞬の判断ミスが、デジタルな死を意味します。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-blue);">
+                    <h3>🚀 超高速弾幕システム</h3>
+                    <p>画面を埋め尽くす敵弾をギリギリで回避する快感。フレーム単位の精密な当たり判定を実装しています。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-blue);">
+                    <h3>👾 進化する敵ユニット</h3>
+                    <p>スコアが上がるにつれ、敵の攻撃パターンが複雑化。予測不能な軌道を描く弾丸に立ち向かえ。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-blue);">
+                    <h3>🌌 没入型サイバーサウンド</h3>
+                    <p>視覚だけでなく、耳からも80年代の電子回路の熱量を感じさせる演出を追求しました。</p>
+                </div>
+            </div>
+        </section>
+
         <section id="disclaimer">
             <h2>免責事項（注意事項）</h2>
             <div class="disclaimer-box">
@@ -434,7 +519,7 @@
     </div>
 
     <footer>
-        <p>© 2026 CAR Road GAME PROJECT. ALL LIGHTS RESERVED.</p>
+        <p>© 2026 RETRO ARCADE PROJECT. ALL LIGHTS RESERVED.</p>
     </footer>
 
     <div class="scroll-top-btn" id="scrollTopBtn">▲</div>
@@ -458,12 +543,34 @@
             });
         });
 
-        // 2. ★【ゲームの説明】ボタンのスクロール制御
-        const scrollDescBtn = document.getElementById('scrollDescBtn');
-        const descriptionSection = document.getElementById('description');
+        // 2. スクロール制御（CAR GAME）
+        const scrollCarDescBtn = document.getElementById('scrollCarDescBtn');
+        const carDescriptionSection = document.getElementById('car-description');
 
-        scrollDescBtn.addEventListener('click', () => {
-            descriptionSection.scrollIntoView({
+        scrollCarDescBtn.addEventListener('click', () => {
+            carDescriptionSection.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+
+        // 2-2. スクロール制御（他のGAMEへ）
+        const scrollOtherBtn = document.getElementById('scrollOtherBtn');
+        const spaceShooterSection = document.getElementById('space-shooter');
+
+        scrollOtherBtn.addEventListener('click', () => {
+            spaceShooterSection.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
+
+        // 2-3. スクロール制御（SPACE SHOOTER）
+        const scrollSpaceDescBtn = document.getElementById('scrollSpaceDescBtn');
+        const spaceDescriptionSection = document.getElementById('space-description');
+
+        scrollSpaceDescBtn.addEventListener('click', () => {
+            spaceDescriptionSection.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
             });
@@ -487,7 +594,7 @@
             });
         });
 
-        // 4. コンテンツがふわっと表示されるエフェクト（IntersectionObserver）
+        // 4. コンテンツがふわっと表示されるエフェクト
         const sections = document.querySelectorAll('section');
         const observerOptions = {
             root: null,
