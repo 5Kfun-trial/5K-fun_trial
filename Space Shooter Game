@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NEON SHOOTING GAME - TIGHT BALANCE</title>
+    
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <style>
+        :root {
+            --bg-color: #010402;
+            --text-color: #33ff66; 
+            --accent-color: #ff0055;
+            --neon-blue: #00f0ff;
+            --neon-yellow: #ffff00;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+        }
+
+        body {
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding-top: env(safe-area-inset-top, 5px);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 15px); 
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
+            z-index: 9999;
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        header {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            flex-shrink: 0;
+            padding: 2px 0;
+        }
+
+        h1 {
+            margin: 2px 0;
+            font-size: 1.3rem;
+            font-weight: 900;
+            text-shadow: 0 0 10px var(--text-color);
+            letter-spacing: 1px;
+        }
+
+        .status-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            border: 2px solid var(--text-color);
+            background: #000;
+            box-shadow: 0 0 15px rgba(51, 255, 102, 0.2);
+        }
+
+        #game-area {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            flex-grow: 1; 
+            flex-shrink: 1; 
+            min-height: 200px; 
+            margin: 5px 0;
+            border: 3px solid var(--text-color);
+            background-color: #000;
+            overflow: hidden;
+            box-sizing: border-box;
+            box-shadow: 0 0 25px rgba(51, 255, 102, 0.4);
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(1, 4, 2, 0.88);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .overlay h2 {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            text-shadow: 0 0 12px var(--accent-color);
+            letter-spacing: 2px;
+        }
+
+        .overlay p { margin: 5px 0; font-size: 0.95rem; }
+
+        footer {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            flex-shrink: 0; 
+        }
+
+        .action-button-container {
+            width: 100%;
+            height: 44px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-action {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            padding: 6px 30px;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(51, 255, 102, 0.4);
+        }
+
+        .btn-action:hover, .btn-action:active {
+            background-color: var(--text-color);
+            color: #000;
+            box-shadow: 0 0 20px var(--text-color);
+        }
+
+        .score-board-container {
+            display: flex;
+            justify-content: space-between;
+            width: 95%;
+            margin: 0 auto 8px auto;
+            font-size: 0.75rem;
+            border-top: 1px dashed rgba(51, 255, 102, 0.3);
+            padding-top: 6px;
+            text-align: left;
+        }
+
+        .hi-score-box { width: 45%; color: #fff; text-shadow: 0 0 5px #fff; }
+        .hi-score-box span { color: var(--text-color); font-size: 1.1rem; font-weight: bold; display: block; }
+
+        .history-box {
+            width: 50%; text-align: right; max-height: 44px;
+            overflow-y: auto; font-family: monospace; font-size: 0.7rem; color: #8cba94; line-height: 1.2;
+        }
+        .history-box::-webkit-scrollbar { width: 3px; }
+        .history-box::-webkit-scrollbar-thumb { background: var(--text-color); }
+
+        .controls { display: flex; justify-content: space-around; width: 85%; margin: 0 auto; }
+        .btn-touch {
+            width: 58px; height: 58px; font-size: 1.4rem; display: flex; justify-content: center; align-items: center;
+            border-radius: 50%; touch-action: manipulation; background: rgba(51, 255, 102, 0.12); box-shadow: 0 0 10px rgba(51, 255, 102, 0.2);
+            color: var(--text-color); border: 2px solid var(--text-color);
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>NEON HIGHWAY STG</h1>
+        <div class="status-container">
+            <div>SCORE: <span id="score">0</span></div>
+            <div>POWER: <span id="power-level">LV.1</span></div>
+        </div>
+    </header>
+
+    <div id="game-area">
+        <canvas id="game-canvas"></canvas>
+
+        <div id="start-overlay" class="overlay">
+            <h2>GALAXY SHOOTER</h2>
+            <p>TACTICAL RE-BALANCE EDITION</p>
+            <p style="color:var(--neon-blue); font-size:0.8rem; margin-top:5px;">PC: [←][→] / SMARTPHONE: TOUCH BUTTON</p>
+        </div>
+
+        <div id="gameover-overlay" class="overlay" style="display: none;">
+            <h2>MISSION FAILED</h2>
+            <p>FINAL SCORE: <span id="final-score">0</span></p>
+        </div>
+    </div>
+
+    <footer>
+        <div class="action-button-container">
+            <button id="start-btn" class="btn-action">LAUNCH MISSION</button>
+            <button id="retry-btn" class="btn-action" style="display: none;">REDEPLOY</button>
+        </div>
+
+        <div class="score-board-container">
+            <div class="hi-score-box">
+                🏆 TOP PILOT
+                <span id="hi-score-display">0</span>
+            </div>
+            <div class="history-box" id="history-display">
+                MISSION HISTORY<br>- NO RECORD -
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="btn-left" class="btn-touch">◀</button>
+            <button id="btn-right" class="btn-touch">▶</button>
+        </div>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const V_WIDTH = 400;
+        const V_HEIGHT = 500;
+
+        let animationFrameId = null;
+        let isPlaying = false;
+        let score = 0;
+        
+        let playerX = V_WIDTH / 2;
+        const PLAYER_Y = V_HEIGHT - 40; 
+        const PLAYER_SPEED = 1.8; 
+        let moveDirection = 0; 
+
+        let pItemsCollected = 1; 
+
+        let enemies = [];     
+        let bullets = [];     
+        let enemyBullets = [];
+        let items = [];       
+        let stars = [];       
+        let scoreEffects = []; 
+        let particles = [];    
+        
+        let shootCooldown = 0;
+        let enemySpawnCooldown = 0;
+        let enemyShootCooldown = 0;
+
+        let keys = {};
+
+        let hiScore = parseInt(localStorage.getItem('stg_hi_score')) || 0;
+        let scoreHistory = JSON.parse(localStorage.getItem('stg_history')) || [];
+
+        const scoreEl = document.getElementById('score');
+        const powerLevelEl = document.getElementById('power-level');
+        const startOverlay = document.getElementById('start-overlay');
+        const gameoverOverlay = document.getElementById('gameover-overlay');
+        const finalScoreEl = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const hiScoreDisplay = document.getElementById('hi-score-display');
+        const historyDisplay = document.getElementById('history-display');
+
+        function resizeCanvas() {
+            canvas.width = V_WIDTH;
+            canvas.height = V_HEIGHT;
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 40; i++) {
+                stars.push({
+                    x: Math.random() * V_WIDTH,
+                    y: Math.random() * V_HEIGHT,
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 0.75 + 0.25 
+                });
+            }
+        }
+
+        function initGame() {
+            score = 0;
+            playerX = V_WIDTH / 2;
+            pItemsCollected = 1;
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            items = [];
+            scoreEffects = [];
+            particles = [];
+            shootCooldown = 0;
+            enemySpawnCooldown = 0;
+
+            initStars();
+            loadAndRenderScoreBoard();
+            updateStatus();
+        }
+
+        function loadAndRenderScoreBoard() {
+            hiScoreDisplay.textContent = hiScore;
+            if (scoreHistory.length === 0) {
+                historyDisplay.innerHTML = "MISSION HISTORY<br>No log standard.";
+            } else {
+                let html = "MISSION HISTORY<br>";
+                scoreHistory.forEach((s, idx) => { html += `#${idx + 1}: ${s}pts<br>`; });
+                historyDisplay.innerHTML = html;
+            }
+        }
+
+        function spawnEnemy() {
+            const rand = Math.random() * 100;
+            let type = '〇';
+            let hp = 1;
+            let size = 14;
+
+            if (rand > 85 && score > 400) { type = '★'; hp = 5; size = 20; }
+            else if (rand > 65 && score > 250) { type = '■'; hp = 4; size = 18; }
+            else if (rand > 40 && score > 80) { type = '▲'; hp = 3; size = 16; }
+
+            enemies.push({
+                x: Math.random() * (V_WIDTH - 40) + 20,
+                y: -20,
+                type: type,
+                hp: hp,
+                size: size,
+                speed: Math.random() * 0.4 + 0.6 
+            });
+        }
+
+        function fireAutoShot() {
+            if (pItemsCollected === 1) {
+                bullets.push({ x: playerX, y: PLAYER_Y - 10, type: '・', speed: 4, dmg: 1 });
+            } else if (pItemsCollected === 2) {
+                bullets.push({ x: playerX, y: PLAYER_Y - 15, type: '!', speed: 5.5, dmg: 2 });
+            } else {
+                bullets.push({ x: playerX, y: PLAYER_Y - 10, type: '・', speed: 4, dmg: 1 });
+                bullets.push({ x: playerX - 15, y: PLAYER_Y - 15, type: '!', speed: 5.5, dmg: 2 });
+                bullets.push({ x: playerX + 15, y: PLAYER_Y - 15, type: '!', speed: 5.5, dmg: 2 });
+            }
+        }
+
+        function createExplosion(x, y) {
+            const count = 5 + Math.floor(Math.random() * 3); 
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 1.5 + 0.8;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 25 + Math.floor(Math.random() * 15) 
+                });
+            }
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            updateMechanics();
+            renderCanvas();
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateMechanics() {
+            if (keys["ArrowLeft"] || keys["Left"]) {
+                playerX -= PLAYER_SPEED;
+            } else if (keys["ArrowRight"] || keys["Right"]) {
+                playerX += PLAYER_SPEED;
+            } else {
+                playerX += moveDirection * PLAYER_SPEED;
+            }
+            if (playerX < 15) playerX = 15;
+            if (playerX > V_WIDTH - 15) playerX = V_WIDTH - 15;
+
+            stars.forEach(s => {
+                s.y += s.speed;
+                if (s.y > V_HEIGHT) {
+                    s.y = 0;
+                    s.x = Math.random() * V_WIDTH;
+                }
+            });
+
+            shootCooldown--;
+            if (shootCooldown <= 0) {
+                fireAutoShot();
+                shootCooldown = 30; 
+            }
+
+            enemySpawnCooldown--;
+            if (enemySpawnCooldown <= 0) {
+                spawnEnemy();
+                enemySpawnCooldown = Math.max(50, 140 - Math.floor(score / 10));
+            }
+
+            enemyShootCooldown--;
+            if (enemyShootCooldown <= 0) {
+                enemies.forEach(e => {
+                    if (e.type !== '〇' && Math.random() < 0.2) { 
+                        enemyBullets.push({ x: e.x, y: e.y + 10, speed: 2.25 }); 
+                    }
+                });
+                enemyShootCooldown = 50;
+            }
+
+            bullets.forEach(b => b.y -= b.speed);
+            enemies.forEach(e => e.y += e.speed);
+            enemyBullets.forEach(eb => eb.y += eb.speed);
+            items.forEach(it => it.y += 1.0);
+
+            scoreEffects.forEach(fx => {
+                fx.y -= 0.5;
+                fx.life--;
+            });
+            scoreEffects = scoreEffects.filter(fx => fx.life > 0);
+
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+            });
+            particles = particles.filter(p => p.life > 0);
+
+            bullets = bullets.filter(b => b.y > -20);
+            enemyBullets = enemyBullets.filter(eb => eb.y < V_HEIGHT + 20);
+            items = items.filter(it => it.y < V_HEIGHT + 20);
+
+            enemies.forEach(e => {
+                if (e.y > V_HEIGHT - 5) {
+                    score -= 50; 
+                    e.y = 9999;   
+
+                    scoreEffects.push({
+                        x: e.x,
+                        y: V_HEIGHT - 25,
+                        text: "-50",
+                        color: "var(--accent-color)",
+                        size: 11,
+                        life: 45 
+                    });
+                }
+            });
+
+            let playerHitboxRadius = 12; 
+            if (pItemsCollected === 2) playerHitboxRadius = 18; 
+            if (pItemsCollected === 3) playerHitboxRadius = 24; 
+
+            const hitEnemy = enemies.some(e => Math.hypot(e.x - playerX, e.y - PLAYER_Y) < (e.size + playerHitboxRadius));
+            const hitBullet = enemyBullets.some(eb => Math.hypot(eb.x - playerX, eb.y - PLAYER_Y) < (playerHitboxRadius + 4));
+
+            if (hitEnemy || hitBullet) {
+                gameOver();
+                return;
+            }
+
+            items.forEach(it => {
+                if (Math.hypot(it.x - playerX, it.y - PLAYER_Y) < (playerHitboxRadius + 12)) {
+                    if (pItemsCollected < 3) {
+                        pItemsCollected++;
+                    } else {
+                        score += 50;
+                        scoreEffects.push({
+                            x: it.x,
+                            y: it.y,
+                            text: "+50",
+                            color: "var(--accent-color)",
+                            size: 12,
+                            life: 45
+                        });
+                    }
+                    it.y = 9999;
+                }
+            });
+            items = items.filter(it => it.y < V_HEIGHT);
+
+            bullets.forEach(b => {
+                enemies.forEach(e => {
+                    if (Math.hypot(b.x - e.x, b.y - e.y) < (e.size + 8)) {
+                        e.hp -= b.dmg;
+                        b.y = -9999;
+
+                        if (e.hp <= 0) {
+                            const exactX = e.x;
+                            const exactY = (e.y === 9999) ? b.y + 15 : e.y;
+                            e.y = 9999;
+                            
+                            createExplosion(exactX, exactY);
+
+                            let earned = 0;
+                            let label = "";
+                            if (e.type === '〇') { earned = 10; label = "〇10点"; }
+                            else if (e.type === '▲') { earned = 30; label = "▲30点"; }
+                            else if (e.type === '■') { earned = 40; label = "■40点"; }
+                            else if (e.type === '★') { earned = 50; label = "★50点"; }
+                            
+                            score += earned;
+
+                            scoreEffects.push({
+                                x: exactX,
+                                y: exactY, 
+                                text: label,
+                                color: "var(--text-color)",
+                                size: 12,
+                                life: 35
+                            });
+                            
+                            if (Math.random() < 0.10) {
+                                items.push({ x: exactX, y: exactY });
+                            }
+                        }
+                    }
+                });
+            });
+            bullets = bullets.filter(b => b.y > -20);
+            enemies = enemies.filter(e => e.y < V_HEIGHT);
+
+            if (score > hiScore) {
+                hiScore = score;
+                hiScoreDisplay.textContent = hiScore;
+            }
+
+            updateStatus();
+        }
+
+        function updateStatus() {
+            scoreEl.textContent = score;
+            powerLevelEl.textContent = pItemsCollected === 3 ? "LV.MAX" : `LV.${pItemsCollected}`;
+            if (pItemsCollected === 2) powerLevelEl.style.color = "var(--neon-blue)";
+            else if (pItemsCollected === 3) powerLevelEl.style.color = "var(--neon-yellow)";
+            else powerLevelEl.style.color = "var(--text-color)";
+        }
+
+        function renderCanvas() {
+            ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            stars.forEach(s => {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.shadowBlur = 8;
+
+            ctx.font = "900 20px 'Courier New', sans-serif";
+            ctx.shadowColor = "var(--accent-color)";
+            ctx.fillStyle = "var(--accent-color)";
+            enemyBullets.forEach(eb => {
+                ctx.fillText("l", eb.x, eb.y);
+            });
+
+            bullets.forEach(b => {
+                ctx.shadowColor = b.type === '!' ? "var(--neon-blue)" : "#fff";
+                ctx.fillStyle = b.type === '!' ? "var(--neon-blue)" : "#fff";
+                ctx.font = b.type === '!' ? "bold 20px Courier New" : "bold 14px Courier New";
+                ctx.fillText(b.type, b.x, b.y);
+            });
+
+            enemies.forEach(e => {
+                let color = "var(--text-color)";
+                if (e.type === '▲') color = "var(--neon-blue)";
+                if (e.type === '■') color = "var(--neon-yellow)";
+                if (e.type === '★') color = "var(--accent-color)";
+
+                ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                ctx.font = `bold ${e.size + 4}px Courier New`;
+                ctx.fillText(e.type, e.x, e.y);
+            });
+
+            ctx.shadowColor = "var(--neon-yellow)";
+            ctx.fillStyle = "var(--neon-yellow)";
+            ctx.font = "bold 15px Courier New";
+            particles.forEach(p => {
+                ctx.fillText("*", p.x, p.y);
+            });
+
+            scoreEffects.forEach(fx => {
+                ctx.shadowColor = fx.color;
+                ctx.fillStyle = fx.color;
+                ctx.font = `bold ${fx.size}px Courier New`;
+                ctx.fillText(fx.text, fx.x, fx.y);
+            });
+
+            let playerVisualText = "△"; 
+            let fontSize = 24;
+            if (pItemsCollected === 2) {
+                playerVisualText = "□△□"; 
+                fontSize = 22; 
+            } else if (pItemsCollected === 3) {
+                playerVisualText = "◆▲◆"; 
+                fontSize = 22;
+            }
+
+            ctx.shadowColor = "var(--neon-yellow)";
+            ctx.fillStyle = "var(--neon-yellow)";
+            ctx.font = `bold ${fontSize}px Courier New`;
+            ctx.fillText(playerVisualText, playerX, PLAYER_Y);
+
+            ctx.font = "900 24px 'Courier New', sans-serif"; 
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = "#ffff00";
+            ctx.shadowBlur = 12; 
+            ctx.fillStyle = "#ffff00"; 
+            items.forEach(it => {
+                ctx.fillText("P", it.x, it.y);
+            });
+
+            ctx.shadowBlur = 0;
+        }
+
+        function startGame() {
+            if (isPlaying) return;
+            isPlaying = true;
+            startOverlay.style.display = "none";
+            gameoverOverlay.style.display = "none";
+            startBtn.style.display = "none";
+            retryBtn.style.display = "none";
+            initGame();
+            gameLoop();
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            finalScoreEl.textContent = score;
+
+            if (score >= hiScore) {
+                hiScore = score;
+                localStorage.setItem('stg_hi_score', hiScore);
+            }
+            scoreHistory.unshift(score);
+            if (scoreHistory.length > 10) scoreHistory.pop();
+            localStorage.setItem('stg_history', JSON.stringify(scoreHistory));
+
+            loadAndRenderScoreBoard();
+            gameoverOverlay.style.display = "flex";
+            retryBtn.style.display = "inline-block";
+        }
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (!isPlaying && e.code === "Space") startGame();
+        });
+        window.addEventListener('keyup', (e) => {
+            delete keys[e.key];
+        });
+
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); moveDirection = -1; });
+        btnLeft.addEventListener('touchend', () => { if(moveDirection === -1) moveDirection = 0; });
+        btnLeft.addEventListener('mousedown', () => moveDirection = -1);
+        btnLeft.addEventListener('mouseup', () => { if(moveDirection === -1) moveDirection = 0; });
+
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); moveDirection = 1; });
+        btnRight.addEventListener('touchend', () => { if(moveDirection === 1) moveDirection = 0; });
+        btnRight.addEventListener('mousedown', () => moveDirection = 1);
+        btnRight.addEventListener('mouseup', () => { if(moveDirection === 1) moveDirection = 0; });
+
+        startBtn.addEventListener('click', startGame);
+        retryBtn.addEventListener('click', startGame);
+
+        resizeCanvas();
+        initGame();
+    </script>
+</body>
+</html>
