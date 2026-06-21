@@ -286,6 +286,7 @@
         let shootCooldown = 0;
         let enemySpawnCooldown = 0;
         let enemyShootCooldown = 0;
+        let invincibilityTimer = 0; // 無敵時間タイマー
 
         let keys = {};
 
@@ -334,6 +335,7 @@
             particles = [];
             shootCooldown = 0;
             enemySpawnCooldown = 0;
+            invincibilityTimer = 0; // 無敵時間リセット
 
             initStars();
             loadAndRenderScoreBoard();
@@ -351,17 +353,21 @@
             }
         }
 
-        // ★敵の強度（HP）と表示文字を完全にご指示通りの仕様に変更 [2]
-        // ★スコア制限を撤廃し、最初から「〇」「▽」「□」「☆」の全種類の敵が強度別で出現するように改良しました [1]
+        // ★敵の強度（HP）と表示文字を完全にご指示通りの仕様に変更
+        // ★スコア制限を撤廃し、最初から「〇」「▽」「□」「☆」の全種類の敵が強度別で出現するように改良しました
         function spawnEnemy() {
             const rand = Math.random() * 100;
             let type = '〇';
             let hp = 1; // 〇 1
             let size = 14;
 
-            if (rand > 85) { type = '☆'; hp = 5; size = 20; }      // ☆ 5 [2]
-            else if (rand > 65) { type = '□'; hp = 4; size = 18; } // □ 4 [2]
-            else if (rand > 40) { type = '▽'; hp = 3; size = 16; } // ▽ 3 [2]（逆三角形に修正）
+            if (rand > 85) { type = '☆'; hp = 5; size = 20; }      // ☆ 5
+            else if (rand > 65) { type = '□'; hp = 4; size = 18; } // □ 4
+            else if (rand > 40) { type = '▽'; hp = 3; size = 16; } // ▽ 3
+
+            // ★ 1000点ごとに難易度アップ (1000点ごとに速度が15%ずつ累積上昇)
+            const difficultyLevel = Math.floor(score / 1000);
+            const speedMultiplier = 1.0 + (difficultyLevel * 0.15);
 
             enemies.push({
                 x: Math.random() * (V_WIDTH - 40) + 20,
@@ -369,21 +375,21 @@
                 type: type,
                 hp: hp,
                 size: size,
-                speed: Math.random() * 0.4 + 0.6 
+                speed: (Math.random() * 0.4 + 0.6) * speedMultiplier
             });
         }
 
-        // ★ 攻撃設定：P1=・ / P2=l l / P3=I・I を適用 [1]
+        // ★ 攻撃設定：P1=・ / P2=l l / P3=I・I を適用
         function fireAutoShot() {
             if (pItemsCollected === 1) {
-                // P1つ： ・ 攻撃 (ダメージ 1) [1]
+                // P1つ： ・ 攻撃 (ダメージ 1)
                 bullets.push({ x: playerX, y: PLAYER_Y - 10, type: '・', speed: 4, dmg: 1 });
             } else if (pItemsCollected === 2) {
-                // P2つ： l  l 攻撃 (2発並列、ダメージ 各1) [1]
+                // P2つ： l  l 攻撃 (2発並列、ダメージ 各1)
                 bullets.push({ x: playerX - 8, y: PLAYER_Y - 15, type: 'l', speed: 5.5, dmg: 1 });
                 bullets.push({ x: playerX + 8, y: PLAYER_Y - 15, type: 'l', speed: 5.5, dmg: 1 });
             } else {
-                // P3つ： I・I 攻撃 (左に I / 中央に ・ / 右に I、ダメージ 各2 / 各1 / 各2) [1]
+                // P3つ： I・I 攻撃 (左に I / 中央に ・ / 右に I、ダメージ 各2 / 各1 / 各2)
                 bullets.push({ x: playerX, y: PLAYER_Y - 10, type: '・', speed: 5.5, dmg: 1 });
                 bullets.push({ x: playerX - 16, y: PLAYER_Y - 15, type: 'I', speed: 5.5, dmg: 2 });
                 bullets.push({ x: playerX + 16, y: PLAYER_Y - 15, type: 'I', speed: 5.5, dmg: 2 });
@@ -433,6 +439,11 @@
                 }
             });
 
+            // 無敵タイマーの更新
+            if (invincibilityTimer > 0) {
+                invincibilityTimer--;
+            }
+
             shootCooldown--;
             if (shootCooldown <= 0) {
                 fireAutoShot();
@@ -442,14 +453,21 @@
             enemySpawnCooldown--;
             if (enemySpawnCooldown <= 0) {
                 spawnEnemy();
-                enemySpawnCooldown = Math.max(50, 140 - Math.floor(score / 10));
+                // ★ 1000点ごとに、スポーン間隔の限界値（下限）を引き下げて出現頻度を向上
+                const difficultyLevel = Math.floor(score / 1000);
+                const minCooldown = Math.max(25, 50 - difficultyLevel * 4);
+                enemySpawnCooldown = Math.max(minCooldown, 140 - Math.floor(score / 10));
             }
 
             enemyShootCooldown--;
             if (enemyShootCooldown <= 0) {
+                // ★ 1000点ごとに、敵の弾速が12%ずつ累積上昇
+                const difficultyLevel = Math.floor(score / 1000);
+                const bulletSpeedMultiplier = 1.0 + (difficultyLevel * 0.12);
+
                 enemies.forEach(e => {
                     if (e.type !== '〇' && Math.random() < 0.2) { 
-                        enemyBullets.push({ x: e.x, y: e.y + 10, speed: 2.25 }); 
+                        enemyBullets.push({ x: e.x, y: e.y + 10, speed: 2.25 * bulletSpeedMultiplier }); 
                     }
                 });
                 enemyShootCooldown = 50;
@@ -497,12 +515,51 @@
             if (pItemsCollected === 2) playerHitboxRadius = 18; 
             if (pItemsCollected === 3) playerHitboxRadius = 24; 
 
-            const hitEnemy = enemies.some(e => Math.hypot(e.x - playerX, e.y - PLAYER_Y) < (e.size + playerHitboxRadius));
-            const hitBullet = enemyBullets.some(eb => Math.hypot(eb.x - playerX, eb.y - PLAYER_Y) < (playerHitboxRadius + 4));
+            // ★段階的被弾処理：無敵時間外の場合のみ衝突検知を行う
+            if (invincibilityTimer <= 0) {
+                let hitThreatIndex = -1;
+                let hitThreatType = null; // 'enemy' or 'bullet'
 
-            if (hitEnemy || hitBullet) {
-                gameOver();
-                return;
+                // 敵の弾との接触判定
+                for (let i = 0; i < enemyBullets.length; i++) {
+                    if (Math.hypot(enemyBullets[i].x - playerX, enemyBullets[i].y - PLAYER_Y) < (playerHitboxRadius + 4)) {
+                        hitThreatType = 'bullet';
+                        hitThreatIndex = i;
+                        break;
+                    }
+                }
+
+                // 敵本体との接触判定（弾に当たっていなければチェック）
+                if (hitThreatIndex === -1) {
+                    for (let i = 0; i < enemies.length; i++) {
+                        if (Math.hypot(enemies[i].x - playerX, enemies[i].y - PLAYER_Y) < (enemies[i].size + playerHitboxRadius)) {
+                            hitThreatType = 'enemy';
+                            hitThreatIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                // 接触時のリアクション処理
+                if (hitThreatIndex !== -1) {
+                    if (pItemsCollected > 1) {
+                        // パワーダウン：P3 -> P2 / P2 -> P1 
+                        pItemsCollected--;
+                        invincibilityTimer = 60; // 被弾後約1秒間の無敵時間
+                        createExplosion(playerX, PLAYER_Y);
+
+                        // 当たった敵または弾のみ消滅させて、多段ダメージを回避する
+                        if (hitThreatType === 'bullet') {
+                            enemyBullets.splice(hitThreatIndex, 1);
+                        } else if (hitThreatType === 'enemy') {
+                            enemies.splice(hitThreatIndex, 1);
+                        }
+                    } else {
+                        // パワー1(P1)の時に当たるとゲームオーバー
+                        gameOver();
+                        return;
+                    }
+                }
             }
 
             items.forEach(it => {
@@ -577,9 +634,13 @@
         function updateStatus() {
             scoreEl.textContent = score;
             powerLevelEl.textContent = pItemsCollected === 3 ? "LV.MAX" : `LV.${pItemsCollected}`;
-            if (pItemsCollected === 2) powerLevelEl.style.color = "var(--neon-blue)";
-            else if (pItemsCollected === 3) powerLevelEl.style.color = "var(--neon-yellow)";
-            else powerLevelEl.style.color = "var(--text-color)";
+            
+            // ★ P2時の特別色(青色)を廃止。LV.MAX時のみ黄色に変更し、LV.1とLV.2は通常の緑色で表示します。
+            if (pItemsCollected === 3) {
+                powerLevelEl.style.color = "var(--neon-yellow)";
+            } else {
+                powerLevelEl.style.color = "var(--text-color)";
+            }
         }
 
         function renderCanvas() {
@@ -601,7 +662,6 @@
                 ctx.fillText("l", eb.x, eb.y);
             });
 
-            // 新しい弾種（・、l、I）のビジュアル描画設定 [1]
             bullets.forEach(b => {
                 if (b.type === 'I') {
                     ctx.shadowColor = "var(--neon-blue)";
@@ -619,7 +679,6 @@
                 ctx.fillText(b.type, b.x, b.y);
             });
 
-            // 敵の描画色と表示文字の割り当て
             enemies.forEach(e => {
                 let color = "var(--text-color)";
                 if (e.type === '▽') color = "var(--neon-blue)";
@@ -656,10 +715,13 @@
                 fontSize = 22;
             }
 
-            ctx.shadowColor = "var(--neon-yellow)";
-            ctx.fillStyle = "var(--neon-yellow)";
-            ctx.font = `bold ${fontSize}px Courier New`;
-            ctx.fillText(playerVisualText, playerX, PLAYER_Y);
+            // ★被弾後（無敵状態）の時は4フレーム周期で点滅させる
+            if (invincibilityTimer === 0 || Math.floor(invincibilityTimer / 4) % 2 === 0) {
+                ctx.shadowColor = "var(--neon-yellow)";
+                ctx.fillStyle = "var(--neon-yellow)";
+                ctx.font = `bold ${fontSize}px Courier New`;
+                ctx.fillText(playerVisualText, playerX, PLAYER_Y);
+            }
 
             ctx.font = "900 24px 'Courier New', sans-serif"; 
             ctx.textAlign = "center";
@@ -713,7 +775,6 @@
             delete keys[e.key];
         });
 
-        // タッチ操作（触れている間は緑になるアクティブクラスの連動を完璧に一元管理）
         btnLeft.addEventListener('touchstart', (e) => { 
             e.preventDefault(); 
             moveDirection = -1; 
@@ -763,7 +824,6 @@
         startBtn.addEventListener('click', startGame);
         retryBtn.addEventListener('click', startGame);
         
-        // Backボタンクリック時に index.html に遷移するイベントを設定
         backBtn.addEventListener('click', () => {
             window.location.href = "index.html";
         });
