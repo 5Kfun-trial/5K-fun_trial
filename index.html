@@ -2,474 +2,511 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>CAR Road GAME</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAR Road GAME - OFFICIAL PORTAL</title>
+    
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
     <style>
         :root {
-            --bg-color: #020703;
-            --text-color: #33ff66; 
-            --accent-color: #ff0055;
+            --bg-base: #010502;
+            --neon-green: #33ff66;
+            --neon-pink: #ff0055;
+            --neon-blue: #00f0ff;
+            --text-muted: #7fa886;
+        }
+
+        /* ----------------------------------
+         * 共通・レトロサイバーベース
+         * ---------------------------------- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none;
+            background-color: var(--bg-base);
+            color: var(--neon-green);
+            font-family: 'Courier New', Courier, 'Hiragino Kaku Gothic ProN', Meiryo, monospace;
+            overflow-x: hidden;
+            line-height: 1.6;
         }
 
-        /* 画面全体のレトロブラウン管フィルター */
+        /* ブラウン管走査線フィルター */
         body::after {
             content: " ";
             display: block;
             position: fixed;
             top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
-            z-index: 999;
-            background-size: 100% 4px, 6px 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+            z-index: 9999;
+            background-size: 100% 5px;
             pointer-events: none;
         }
 
-        header {
-            text-align: center;
+        /* リンク共通 */
+        a {
+            color: var(--neon-green);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        a:hover {
+            color: var(--neon-pink);
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        /* ----------------------------------
+         * ハンバーガーメニュー (バーガーリンク)
+         * ---------------------------------- */
+        .burger-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 45px;
+            height: 45px;
+            border: 2px solid var(--neon-green);
+            background: rgba(0, 0, 0, 0.9);
+            box-shadow: 0 0 10px var(--neon-green);
+            z-index: 2000;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 10px;
+            transition: all 0.3s;
+        }
+        .burger-btn:hover {
+            box-shadow: 0 0 20px var(--neon-pink);
+            border-color: var(--neon-pink);
+        }
+        .burger-btn span {
+            display: block;
             width: 100%;
-            max-width: 500px;
-            padding: 5px 0;
-            box-sizing: border-box;
-            z-index: 5;
+            height: 2px;
+            background-color: var(--neon-green);
+            transition: all 0.3s ease;
+        }
+        
+        .burger-btn.active span:nth-child(1) { transform: translateY(8px) rotate(45deg); background-color: var(--neon-pink); }
+        .burger-btn.active span:nth-child(2) { opacity: 0; }
+        .burger-btn.active span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); background-color: var(--neon-pink); }
+
+        .nav-menu {
+            position: fixed;
+            top: 0; right: -100%;
+            width: 300px;
+            height: 100%;
+            background: rgba(1, 5, 2, 0.98);
+            border-left: 3px double var(--neon-green);
+            box-shadow: -10px 0 30px rgba(51, 255, 102, 0.2);
+            z-index: 1999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            transition: right 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+        .nav-menu.open { right: 0; }
+        .nav-menu a {
+            font-size: 1.3rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: 1px solid transparent;
+            padding: 10px 20px;
+        }
+        .nav-menu a:hover {
+            border: 1px solid var(--neon-pink);
+            background: rgba(255, 0, 85, 0.05);
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        /* ----------------------------------
+         * ヒーローヘッダー (メインビジュアル)
+         * ---------------------------------- */
+        header {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: radial-gradient(circle, rgba(2,20,5,1) 0%, rgba(1,5,2,1) 100%);
+            border-bottom: 4px double var(--neon-green);
+            padding: 20px;
+            position: relative;
+        }
+
+        .welcome-text {
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
+            margin-bottom: 10px;
+            animation: blink 1.5s infinite steps(2);
         }
 
         h1 {
-            margin: 5px 0;
-            font-size: 1.8rem;
+            font-size: 3.5rem;
             font-weight: 900;
-            text-shadow: 0 0 10px var(--text-color), 0 0 20px rgba(51, 255, 102, 0.5);
-            letter-spacing: 1px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-green), 0 0 30px var(--neon-green), 0 0 50px var(--neon-green);
+            letter-spacing: 4px;
+            line-height: 1.1;
+            margin-bottom: 20px;
         }
 
-        .status-container {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 5px;
-            padding: 5px 15px;
-            font-size: 0.95rem;
-            border: 2px solid var(--text-color);
-            background: #000;
-            box-shadow: 0 0 15px rgba(51, 255, 102, 0.2);
-        }
-
-        #game-area {
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-            height: 60vh;
-            max-height: 520px;
-            border: 3px solid var(--text-color);
-            background-color: #000;
-            overflow: hidden;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            box-shadow: 0 0 25px rgba(51, 255, 102, 0.4);
-        }
-
-        #road-display {
-            width: 100%;
-            white-space: pre;
-            font-size: 3.6vw;
-            line-height: 0.95; /* さらに行間を詰めて超高速スクロールを強調 */
-            text-align: left;
-            margin-bottom: 5px;
-            font-weight: bold;
-            text-shadow: 0 0 3px var(--text-color);
-        }
-
-        @media (min-width: 500px) {
-            #road-display {
-                font-size: 16px;
-            }
-        }
-
-        .overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 5, 2, 0.92);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-
-        .overlay h2 {
-            font-size: 2.2rem;
-            color: var(--accent-color);
-            margin-bottom: 10px;
-            text-shadow: 0 0 12px var(--accent-color);
-            letter-spacing: 3px;
-        }
-
-        .overlay p {
-            margin: 5px 0 20px 0;
+        .tagline {
             font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 35px;
+            font-weight: bold;
+        }
+
+        /* ★メインアクションボタンエリア */
+        .hero-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s 0.5s forwards ease-out;
+        }
+
+        /* プレイボタン */
+        .btn-play-now {
+            font-size: 1.4rem;
+            font-family: inherit;
+            color: #000;
+            background-color: var(--neon-green);
+            border: 3px solid #fff;
+            padding: 15px 40px;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px var(--neon-green);
+            animation: pulse 2s infinite ease-in-out;
+            transition: all 0.2s ease;
+        }
+        .btn-play-now:active {
+            transform: scale(0.96);
+        }
+
+        /* ★新設：ゲームの説明ボタン（古いテキストUI風なのにふわっと光る） */
+        .btn-scroll-desc {
+            font-size: 1.0rem;
+            font-family: inherit;
+            color: var(--neon-blue);
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            padding: 8px 25px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .btn-scroll-desc:hover, .btn-scroll-desc:active {
+            color: #000;
+            background-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+            border-color: #fff;
+        }
+
+        /* ----------------------------------
+         * メインコンテンツエリア
+         * ---------------------------------- */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 80px 20px;
+        }
+
+        section {
+            margin-bottom: 100px;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s ease-out;
+        }
+        section.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        h2 {
+            font-size: 2rem;
+            color: var(--neon-pink);
+            text-shadow: 0 0 10px var(--neon-pink);
+            border-bottom: 2px dashed var(--neon-green);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+        }
+        h2::before {
+            content: "■ ";
+            font-size: 1.2rem;
+            margin-right: 10px;
+            color: var(--neon-blue);
+        }
+
+        p {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            text-align: justify;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .feature-card {
+            border: 1px solid var(--neon-green);
+            background: rgba(51, 255, 102, 0.02);
+            padding: 20px;
+            box-shadow: inset 0 0 10px rgba(51, 255, 102, 0.1);
+            transition: transform 0.3s;
+        }
+        .feature-card:hover {
+            transform: scale(1.03);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+        .feature-card h3 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        /* 免責事項ボックス */
+        .disclaimer-box {
+            border: 2px double var(--neon-pink);
+            background: #0a0205;
+            padding: 25px;
+            font-size: 0.9rem;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);
+        }
+        .disclaimer-box ul {
+            list-style-type: "⚠️ ";
+            padding-left: 20px;
+        }
+        .disclaimer-box li {
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        /* ----------------------------------
+         * フッター
+         * ---------------------------------- */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(51, 255, 102, 0.2);
+            font-size: 0.8rem;
+            color: rgba(127, 168, 134, 0.6);
             letter-spacing: 1px;
         }
 
-        button {
-            background-color: transparent;
-            color: var(--text-color);
-            border: 2px solid var(--text-color);
-            padding: 10px 25px;
-            font-family: inherit;
-            font-size: 1.2rem;
-            cursor: pointer;
-            box-shadow: 0 0 8px rgba(51, 255, 102, 0.3);
-        }
-
-        button:hover, button:active {
-            background-color: var(--text-color);
-            color: #000;
-            box-shadow: 0 0 15px var(--text-color);
-        }
-
-        footer {
-            width: 100%;
-            max-width: 500px;
-            text-align: center;
-            margin-top: auto;
-            padding-bottom: 15px;
-            z-index: 5;
-        }
-
-        .instructions {
-            font-size: 0.8rem;
-            margin: 8px 0;
-            color: #8cba94;
-        }
-
-        .controls {
-            display: flex;
-            justify-content: space-around;
-            width: 85%;
-            margin: 0 auto;
-        }
-
-        .btn-touch {
-            width: 75px;
-            height: 75px;
-            font-size: 2.2rem;
+        /* ----------------------------------
+         * ▲ 上に戻るボタン (スクロール連動)
+         * ---------------------------------- */
+        .scroll-top-btn {
+            position: fixed;
+            bottom: -60px; 
+            right: 25px;
+            width: 50px;
+            height: 50px;
+            background-color: #000;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 1.4rem;
             display: flex;
             justify-content: center;
             align-items: center;
-            border-radius: 50%;
-            touch-action: manipulation;
-            background: rgba(51, 255, 102, 0.05);
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-blue);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+        .scroll-top-btn.visible {
+            bottom: 25px;
+        }
+        .scroll-top-btn:hover {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+            box-shadow: 0 0 20px var(--neon-pink);
+            transform: translateY(-5px);
+        }
+
+        /* ----------------------------------
+         * アニメーション
+         * ---------------------------------- */
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 15px var(--neon-green); }
+            50% { box-shadow: 0 0 30px var(--neon-pink); border-color: var(--neon-pink); }
+            100% { box-shadow: 0 0 15px var(--neon-green); }
+        }
+
+        /* モバイル最適化 */
+        @media (max-width: 600px) {
+            h1 { font-size: 2.2rem; letter-spacing: 2px; }
+            .tagline { font-size: 0.95rem; }
+            h2 { font-size: 1.5rem; }
+            .btn-play-now { font-size: 1.1rem; padding: 12px 30px; }
+            .btn-scroll-desc { font-size: 0.85rem; padding: 6px 20px; }
+            .nav-menu { width: 100%; right: -100%; } 
         }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>CAR Road GAME</h1>
-        <div class="status-container">
-            <div>SCORE: <span id="score">0</span></div>
-            <div>LEVEL: <span id="level">1</span></div>
-            <div>DIST : <span id="distance">0</span>m</div>
-            <div>SPEED: <span id="speed">0</span> km/h</div>
+    <div class="burger-btn" id="burgerBtn">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <nav class="nav-menu" id="navMenu">
+        <a href="#" class="nav-item">HOME</a>
+        <a href="#description" class="nav-item">GAME DESCRIPTION</a>
+        <a href="#disclaimer" class="nav-item">DISCLAIMER</a>
+    </nav>
+
+    <header id="home">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>CAR Road GAME<br><span style="color:var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink);">OFFICIAL</span></h1>
+        <p class="tagline">80年代ゲームセンターの熱狂が、ブラウザ上で超高速駆動する。君は迫り来るロングカーブを生き残れるか。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='Car Road Game.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollDescBtn">【ゲームの説明】</button>
         </div>
     </header>
 
-    <div id="game-area">
-        <div id="road-display"></div>
+    <div class="container">
 
-        <div id="start-overlay" class="overlay">
-            <h2>CAR Road GAME</h2>
-            <p>INSERT COIN [SPACE]</p>
-            <button id="start-btn">START GAME</button>
-        </div>
+        <section id="description">
+            <h2>ゲームの説明</h2>
+            <p>『CAR Road GAME』は、古き良きテキストアート（アスキーアート）の表現技法を用いながら、秒間30フレームを超える超高速演算処理によって構築された、全く新しい超カジュアル・レーシングサバイバルゲームです。</p>
+            <p>プレイヤーは、自動で過激にうねり出すデジタル・ロードの壁に激突しないよう、自車（▲）を巧みに操り、限界の走行距離（メートル）に挑みます。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>📈 リアルタイム・レベルアップ</h3>
+                    <p>1000メートル走破するごとにスピードゲートが出現。通過するとスクロール速度と道路のカーブ難易度が永久に上昇します。</p>
+                </div>
+                <div class="feature-card">
+                    <h3>💾 永続ハイスコア保存</h3>
+                    <p>ブラウザの内部ストレージと連動。過去10回分のプレイ履歴と、自分自身の最高記録（HI-SCORE）が自動保存されます。</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📱 ハイブリッド操作対応</h3>
+                    <p>デスクトップPCのキーボード[←][→]はもちろん、スマートフォンの画面下部に最適化されたタッチボタンでいつでもどこでも即プレイ可能。</p>
+                </div>
+            </div>
+        </section>
 
-        <div id="gameover-overlay" class="overlay" style="display: none;">
-            <h2>GAME OVER</h2>
-            <p>FINAL SCORE: <span id="final-score">0</span></p>
-            <button id="retry-btn">PLAY AGAIN</button>
-        </div>
+        <section id="disclaimer">
+            <h2>免責事項（注意事項）</h2>
+            <div class="disclaimer-box">
+                <ul>
+                    <li>本ゲームは画面の高速な明滅表現、およびスクロールエフェクトを含みます。ご鑑賞・プレイの際は部屋を明るくし、体調が優れない場合はプレイをお控えください。</li>
+                    <li>本サイトおよびゲームプログラムの利用によって生じた、いかなるデータ損失、端末の不具合、またはその他の損害についても、開発者は一切の責任を負いかねます。</li>
+                    <li>スコアデータ等はブラウザのローカルキャッシュ（localStorage）に保存されます。ブラウザの履歴やキャッシュを削除すると、最高スコアおよび履歴も消去されますのでご注意ください。</li>
+                </ul>
+            </div>
+        </section>
+
     </div>
 
     <footer>
-        <p class="instructions">【CONTROLS】 PC: [←][→] / SMARTPHONE: TOUCH BUTTON</p>
-        <div class="controls">
-            <button id="btn-left" class="btn-touch">◀</button>
-            <button id="btn-right" class="btn-touch">▶</button>
-        </div>
+        <p>© 2026 CAR Road GAME PROJECT. ALL LIGHTS RESERVED.</p>
     </footer>
 
+    <div class="scroll-top-btn" id="scrollTopBtn">▲</div>
+
+
     <script>
-        // --- ゲーム設定 ---
-        const DISPLAY_ROWS = 28;     
-        const ROAD_TOTAL_WIDTH = 30; 
+        // 1. ハンバーガーメニューの開閉
+        const burgerBtn = document.getElementById('burgerBtn');
+        const navMenu = document.getElementById('navMenu');
+        const navItems = document.querySelectorAll('.nav-item');
 
-        // --- ゲーム状態 ---
-        let gameInterval = null;
-        let isPlaying = false;
-        
-        let score = 0;
-        let distance = 0;
-        let speed = 200; // 初期最高初速をアップ
-        let level = 1;
+        burgerBtn.addEventListener('click', () => {
+            burgerBtn.classList.toggle('active');
+            navMenu.classList.toggle('open');
+        });
 
-        let playerX = 15;
-        let roadData = [];
-
-        // 滑らかでダイナミックなロングカーブ用パラメータ（サイン波ベース）
-        let curveTheta = 0;      // 角度（カーブ進行度）
-        let curveTargetAmp = 0;  // ターゲットとするカーブの振幅
-        let currentAmp = 0;      // 現在のカーブ振幅
-        let segmentDuration = 0; // 現在のカーブセクションの残り寿命
-        let nextGateDistance = 1000; // 次に「Run 1,000m」を発生させる距離指標
-
-        let touchTimer = null;
-
-        const roadDisplay = document.getElementById('road-display');
-        const scoreEl = document.getElementById('score');
-        const levelEl = document.getElementById('level');
-        const distanceEl = document.getElementById('distance');
-        const speedEl = document.getElementById('speed');
-        const startOverlay = document.getElementById('start-overlay');
-        const gameoverOverlay = document.getElementById('gameover-overlay');
-        const finalScoreEl = document.getElementById('final-score');
-        const startBtn = document.getElementById('start-btn');
-        const retryBtn = document.getElementById('retry-btn');
-        const btnLeft = document.getElementById('btn-left');
-        const btnRight = document.getElementById('btn-right');
-
-        function initGame() {
-            score = 0;
-            distance = 0;
-            speed = 200;
-            level = 1;
-            playerX = 15;
-            roadData = [];
-            curveTheta = 0;
-            curveTargetAmp = 0;
-            currentAmp = 0;
-            segmentDuration = 0;
-            nextGateDistance = 1000;
-
-            // 初期位置生成
-            for (let i = 0; i < DISPLAY_ROWS; i++) {
-                roadData.push({ left: 10, width: 10, center: 15, msg: null });
-            }
-
-            updateStatus();
-            render();
-        }
-
-        function gameLoop() {
-            if (!isPlaying) return;
-
-            // 高速スクロールによる走行距離の加算
-            distance += Math.floor(speed / 35);
-            score = distance;
-
-            // 難易度レベル設定
-            level = Math.floor(distance / 350) + 1;
-            speed = 200 + (level - 1) * 35; // レベルごとにガツガツ加速
-            
-            let maxRoadWidth = Math.max(6, 10 - Math.floor(level / 3));
-
-            // ★ロングカーブアルゴリズム（突然曲がらず、じわじわ大きなGがかかる）
-            if (segmentDuration <= 0) {
-                // 直線が続きすぎないよう、高確率(75%)でロングカーブへ、低確率(25%)で一瞬の直線へ
-                if (Math.random() < 0.75) {
-                    // 左右へ大きく振る目標値（レベル上昇でさらに深くなる。最大幅10）
-                    const limit = Math.min(10, 6 + Math.floor(level / 2));
-                    curveTargetAmp = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * (limit - 4));
-                    segmentDuration = 40 + Math.floor(Math.random() * 40); // じっくり長く曲がり続ける
-                } else {
-                    curveTargetAmp = 0; // 緩やかなセンター復帰
-                    segmentDuration = 15 + Math.floor(Math.random() * 15); // 直線は短め
-                }
-            }
-            segmentDuration--;
-
-            // 現在の振幅を緩やかに変化させる（急カーブ化を抑止、滑らかなうねりを形成）
-            currentAmp += (curveTargetAmp - currentAmp) * 0.08;
-            
-            // サイン波を少しブレンドし、滑らかで美しいワインディングロードを表現
-            curveTheta += 0.05;
-            let centerFloat = 15.0 + currentAmp + (Math.sin(curveTheta) * (currentAmp === 0 ? 0 : 0.5));
-
-            const currentWidth = maxRoadWidth;
-            let leftEdge = Math.round(centerFloat - (currentWidth / 2));
-            
-            if (leftEdge < 1) leftEdge = 1;
-            if (leftEdge + currentWidth >= ROAD_TOTAL_WIDTH - 1) {
-                leftEdge = ROAD_TOTAL_WIDTH - 1 - currentWidth;
-            }
-
-            // ★1,000mごとの「Run 1,000m」表示・難易度上乗せ判定
-            let rowMessage = null;
-            if (distance >= nextGateDistance) {
-                rowMessage = `Run ${nextGateDistance}m`;
-                nextGateDistance += 1000;
-                // ゲート通過時にスピードと難易度を強制ボーナスUP
-                speed += 25; 
-            }
-
-            roadData.push({ 
-                left: leftEdge, 
-                width: currentWidth, 
-                center: Math.round(centerFloat),
-                msg: rowMessage
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                burgerBtn.classList.remove('active');
+                navMenu.classList.remove('open');
             });
-            roadData.shift();
+        });
 
-            // 当たり判定
-            const playerRow = roadData[0]; 
-            const rightEdge = playerRow.left + playerRow.width;
+        // 2. ★【ゲームの説明】ボタンのスクロール制御
+        const scrollDescBtn = document.getElementById('scrollDescBtn');
+        const descriptionSection = document.getElementById('description');
 
-            if (playerX <= playerRow.left || playerX >= rightEdge) {
-                gameOver();
-                return;
-            }
+        scrollDescBtn.addEventListener('click', () => {
+            descriptionSection.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
 
-            updateStatus();
-            render();
-        }
+        // 3. ▲上に戻るボタンの制御
+        const scrollTopBtn = document.getElementById('scrollTopBtn');
 
-        function updateStatus() {
-            scoreEl.textContent = score;
-            levelEl.textContent = level;
-            distanceEl.textContent = distance;
-            speedEl.textContent = speed;
-        }
-
-        function render() {
-            let displayHTML = "";
-
-            for (let i = DISPLAY_ROWS - 1; i >= 0; i--) {
-                const row = roadData[i];
-                let lineArr = new Array(ROAD_TOTAL_WIDTH).fill(" ");
-
-                // ゲートメッセージがある場合は道路中央付近に優先描写
-                if (row.msg) {
-                    const text = `--- ${row.msg} ---`;
-                    let startPos = Math.max(0, Math.floor((ROAD_TOTAL_WIDTH - text.length) / 2));
-                    for(let charIdx=0; charIdx<text.length; charIdx++) {
-                        if(startPos + charIdx < ROAD_TOTAL_WIDTH) {
-                            lineArr[startPos + charIdx] = `<span style='color:#fff; background:${varAccentColor()}; font-weight:bold;'>${text[charIdx]}</span>`;
-                        }
-                    }
-                } else {
-                    // 通常の道路境界
-                    lineArr[row.left] = "|";
-                    lineArr[row.left + row.width] = "|";
-
-                    // 超高速を際立たせるためのセンターライン描画
-                    if ((distance + i) % 2 === 0) {
-                        const mid = row.center;
-                        if (mid > row.left && mid < row.left + row.width) {
-                            lineArr[mid] = "<span style='color: rgba(51, 255, 102, 0.4);'>.</span>";
-                        }
-                    }
-                }
-
-                // プレイヤーの車
-                if (i === 0) {
-                    if (playerX >= 0 && playerX < ROAD_TOTAL_WIDTH) {
-                        lineArr[playerX] = "<span style='color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); font-weight:900;'>▲</span>";
-                    }
-                }
-
-                displayHTML += lineArr.join("") + "\n";
-            }
-
-            roadDisplay.innerHTML = displayHTML;
-        }
-
-        function varAccentColor() {
-            return getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
-        }
-
-        function startGame() {
-            if (isPlaying) return;
-            isPlaying = true;
-            startOverlay.style.display = "none";
-            gameoverOverlay.style.display = "none";
-            initGame();
-            // 50ms から 33ms (約30fps) へ大幅に描画を高速化！！
-            gameInterval = setInterval(gameLoop, 33);
-        }
-
-        function gameOver() {
-            isPlaying = false;
-            clearInterval(gameInterval);
-            clearInterval(touchTimer);
-            finalScoreEl.textContent = score;
-            gameoverOverlay.style.display = "flex";
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if (!isPlaying) {
-                if (e.code === "Space") startGame();
-                return;
-            }
-
-            if (e.key === "ArrowLeft" || e.key === "Left") {
-                playerX = Math.max(0, playerX - 1);
-                render();
-            } else if (e.key === "ArrowRight" || e.key === "Right") {
-                playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
-                render();
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollTopBtn.classList.add('visible');
+            } else {
+                scrollTopBtn.classList.remove('visible');
             }
         });
 
-        // 30fps駆動に合わせて、スマホ長押しリピート処理も最速化
-        function startMove(direction) {
-            if (!isPlaying) return;
-            
-            if (direction === 'left') playerX = Math.max(0, playerX - 1);
-            else playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
-            render();
+        scrollTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
 
-            clearInterval(touchTimer);
-            touchTimer = setInterval(() => {
-                if (direction === 'left') playerX = Math.max(0, playerX - 1);
-                else playerX = Math.min(ROAD_TOTAL_WIDTH - 1, playerX + 1);
-                render();
-            }, 25); 
-        }
+        // 4. コンテンツがふわっと表示されるエフェクト（IntersectionObserver）
+        const sections = document.querySelectorAll('section');
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.15
+        };
 
-        function stopMove() {
-            clearInterval(touchTimer);
-        }
+        const sectionObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
 
-        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('left'); });
-        btnLeft.addEventListener('touchend', stopMove);
-        btnLeft.addEventListener('mousedown', () => startMove('left'));
-        btnLeft.addEventListener('mouseup', stopMove);
-        btnLeft.addEventListener('mouseleave', stopMove);
-
-        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); startMove('right'); });
-        btnRight.addEventListener('touchend', stopMove);
-        btnRight.addEventListener('mousedown', () => startMove('right'));
-        btnRight.addEventListener('mouseup', stopMove);
-        btnRight.addEventListener('mouseleave', stopMove);
-
-        startBtn.addEventListener('click', startGame);
-        retryBtn.addEventListener('click', startGame);
-
-        initGame();
+        sections.forEach(section => {
+            sectionObserver.observe(section);
+        });
     </script>
 </body>
 </html>
