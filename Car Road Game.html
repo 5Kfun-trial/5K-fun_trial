@@ -175,14 +175,16 @@
             margin-top: auto; 
         }
 
-        /* スタート・リトライボタンのコンテナ */
+        /* スタート・リトライボタン・戻るボタンのコンテナ（縦並びに対応） */
         .action-button-container {
             width: 100%;
-            height: 44px;
+            height: auto;
             margin-bottom: 8px;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            gap: 6px; /* ボタン間の隙間 */
         }
 
         .btn-action {
@@ -258,7 +260,7 @@
             margin: 0 auto;
         }
 
-        /* 操作ボタン：共通デザインを整え、鮮やかにリデザイン */
+        /* 操作ボタン：周りのインターフェースと同じ鮮やかな緑（ネオングリーン）に統一 */
         .btn-touch {
             width: 62px;
             height: 62px;
@@ -272,36 +274,20 @@
             -webkit-user-select: none;
             cursor: pointer;
             transition: all 0.1s ease;
-        }
 
-        /* 左ボタン：鮮やかなネオンシアン（水色） */
-        #btn-left {
-            background: rgba(0, 240, 255, 0.15);
-            border: 2px solid #00f0ff;
-            color: #00f0ff;
-            text-shadow: 0 0 8px #00f0ff;
-            box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+            background: rgba(51, 255, 102, 0.15);
+            border: 2px solid var(--text-color);
+            color: var(--text-color);
+            text-shadow: 0 0 8px var(--text-color);
+            box-shadow: 0 0 12px rgba(51, 255, 102, 0.3);
         }
-        #btn-left:active {
-            background: #00f0ff;
-            color: #000;
-            box-shadow: 0 0 25px #00f0ff;
-            text-shadow: none;
-        }
-
-        /* 右ボタン：鮮やかなネオンピンク（マゼンタ） */
-        #btn-right {
-            background: rgba(255, 0, 85, 0.15);
-            border: 2px solid var(--accent-color);
-            color: var(--accent-color);
-            text-shadow: 0 0 8px var(--accent-color);
-            box-shadow: 0 0 12px rgba(255, 0, 85, 0.3);
-        }
-        #btn-right:active {
-            background: var(--accent-color);
-            color: #000;
-            box-shadow: 0 0 25px var(--accent-color);
-            text-shadow: none;
+        
+        /* ★触った（ホバー、クリック、タップしている間）ときに背景が緑に塗りつぶされ、矢印が黒になるスタイル */
+        .btn-touch:hover, .btn-touch:active, .btn-touch.touch-active {
+            background: var(--text-color) !important;
+            color: #000 !important;
+            box-shadow: 0 0 25px var(--text-color) !important;
+            text-shadow: none !important;
         }
     </style>
 </head>
@@ -335,6 +321,7 @@
         <div class="action-button-container">
             <button id="start-btn" class="btn-action">START GAME</button>
             <button id="retry-btn" class="btn-action" style="display: none;">PLAY AGAIN</button>
+            <button id="back-btn" class="btn-action">Back</button>
         </div>
 
         <div class="score-board-container">
@@ -369,7 +356,7 @@
         let speed = 200; 
         let level = 1;
 
-        // ★スムーズな慣性移動のための変数設計
+        // スムーズな慣性移動のための変数設計
         let playerX = 15.0;
         let playerVX = 0.0;     // 左右の現在の速度
         const ACCEL = 0.06;     // キー/ボタン押下時の加速スピード
@@ -407,6 +394,7 @@
         const finalScoreEl = document.getElementById('final-score');
         const startBtn = document.getElementById('start-btn');
         const retryBtn = document.getElementById('retry-btn');
+        const backBtn = document.getElementById('back-btn');
         const btnLeft = document.getElementById('btn-left');
         const btnRight = document.getElementById('btn-right');
         
@@ -545,7 +533,7 @@
             }
         }
 
-        // ★マイルドな慣性によるスムーズな左右移動計算
+        // マイルドな慣性によるスムーズな左右移動計算
         function updatePlayerPosition() {
             if (!isPlaying) return;
 
@@ -615,7 +603,7 @@
             curveTheta += 0.04;
             let nextCenterFloat = 15.0 + currentAmp + (Math.sin(curveTheta) * (currentAmp === 0 ? 0 : 0.4));
 
-            // ★ 道路の1ステップでの変化幅（急さ）を最大 0.13 文字分に厳しく制限して超マイルドな曲線にリファイン
+            // 道路の1ステップでの変化幅（急さ）を最大 0.13 文字分に厳しく制限して超マイルドな曲線にリファイン
             const maxShiftPerStep = 0.13;
             let lastRow = roadData[roadData.length - 1];
             let lastCenterFloat = lastRow ? lastRow.centerFloat : 15.0;
@@ -701,7 +689,11 @@
             scoreEl.textContent = score;
             levelEl.textContent = level;
             distanceEl.textContent = distance;
-            speedEl.textContent = speed;
+            
+            // ★ スピード感はそのままに、表示用のSPEED数値のみを「100km/hから徐々に上がり、320km/hがMAX（カンスト）」になるよう常識の範囲に設定 [1]
+            let displaySpeed = 100 + Math.floor(distance / 12);
+            if (displaySpeed > 320) displaySpeed = 320;
+            speedEl.textContent = displaySpeed;
         }
 
         function render() {
@@ -759,6 +751,7 @@
             gameoverOverlay.style.display = "none";
             startBtn.style.display = "none";
             retryBtn.style.display = "none";
+            backBtn.style.display = "none";
             
             gameArea.classList.remove('crash-shake', 'crash-red');
 
@@ -798,6 +791,7 @@
             gameoverOverlay.style.display = "flex";
             startBtn.style.display = "none";
             retryBtn.style.display = "inline-block"; 
+            backBtn.style.display = "inline-block"; 
         }
 
         window.addEventListener('keydown', (e) => {
@@ -821,21 +815,60 @@
             }
         });
 
-        // モバイル等のタッチボタン入力の統一制御
-        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed.left = true; });
-        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed.left = false; });
-        btnLeft.addEventListener('mousedown', () => { keysPressed.left = true; });
-        btnLeft.addEventListener('mouseup', () => { keysPressed.left = false; });
-        btnLeft.addEventListener('mouseleave', () => { keysPressed.left = false; });
+        // ★ モバイル等のタッチ操作・マウスクリック入力の統一制御（触れている間に色を変える処理をJavaScriptで完璧に連動） [2]
+        btnLeft.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            keysPressed.left = true; 
+            btnLeft.classList.add('touch-active'); // 緑塗りつぶしクラスを追加
+        });
+        btnLeft.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            keysPressed.left = false; 
+            btnLeft.classList.remove('touch-active'); // 解除
+        });
+        btnLeft.addEventListener('mousedown', () => { 
+            keysPressed.left = true; 
+            btnLeft.classList.add('touch-active');
+        });
+        btnLeft.addEventListener('mouseup', () => { 
+            keysPressed.left = false; 
+            btnLeft.classList.remove('touch-active');
+        });
+        btnLeft.addEventListener('mouseleave', () => { 
+            keysPressed.left = false; 
+            btnLeft.classList.remove('touch-active');
+        });
 
-        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed.right = true; });
-        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed.right = false; });
-        btnRight.addEventListener('mousedown', () => { keysPressed.right = true; });
-        btnRight.addEventListener('mouseup', () => { keysPressed.right = false; });
-        btnRight.addEventListener('mouseleave', () => { keysPressed.right = false; });
+        btnRight.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            keysPressed.right = true; 
+            btnRight.classList.add('touch-active'); // 緑塗りつぶしクラスを追加
+        });
+        btnRight.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            keysPressed.right = false; 
+            btnRight.classList.remove('touch-active'); // 解除
+        });
+        btnRight.addEventListener('mousedown', () => { 
+            keysPressed.right = true; 
+            btnRight.classList.add('touch-active');
+        });
+        btnRight.addEventListener('mouseup', () => { 
+            keysPressed.right = false; 
+            btnRight.classList.remove('touch-active');
+        });
+        btnRight.addEventListener('mouseleave', () => { 
+            keysPressed.right = false; 
+            btnRight.classList.remove('touch-active');
+        });
 
         startBtn.addEventListener('click', startGame);
         retryBtn.addEventListener('click', startGame);
+        
+        // Backボタン押下時に index.html に遷移する処理
+        backBtn.addEventListener('click', () => {
+            window.location.href = "index.html";
+        });
 
         initGame();
     </script>
