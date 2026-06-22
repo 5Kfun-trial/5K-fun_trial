@@ -1,3 +1,5 @@
+--- START OF FILE index.html ---
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -14,6 +16,7 @@
             --neon-pink: #ff0055;
             --neon-blue: #00f0ff;
             --neon-purple: #bc13fe;
+            --neon-yellow: #ffff00; /* テトリス用に追加 */
             --text-muted: #7fa886;
         }
 
@@ -153,7 +156,7 @@
             border: 1px solid var(--neon-blue);
             box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
             border-radius: 4px;
-            cursor: pointer; /* クリック可能であることを示す */
+            cursor: pointer;
             transition: transform 0.2s ease;
         }
         .qr-wrapper:active {
@@ -166,11 +169,10 @@
             filter: brightness(1.1) contrast(1.1);
         }
 
-        /* ★追加：QRコード拡大モーダル用スタイル */
         .qr-modal {
             display: none;
             position: fixed;
-            z-index: 10000; /* 走査線(9999)より上に配置 */
+            z-index: 10000;
             left: 0;
             top: 0;
             width: 100%;
@@ -219,16 +221,26 @@
             transition: all 0.5s ease;
         }
 
-        /* CAR GAME用テーマ */
         .theme-car {
             background: radial-gradient(circle, rgba(2,20,5,1) 0%, rgba(1,5,2,1) 100%);
         }
 
-        /* SPACE SHOOTER用テーマ */
         .theme-space {
             background: radial-gradient(circle, rgba(5,10,30,1) 0%, rgba(1,5,15,1) 100%);
             border-bottom-color: var(--neon-blue);
             color: var(--neon-blue);
+        }
+
+        .theme-brick {
+            background: radial-gradient(circle, rgba(30,0,50,1) 0%, rgba(1,5,2,1) 100%);
+            border-bottom-color: var(--neon-purple);
+            color: var(--neon-purple);
+        }
+
+        .theme-tetris {
+            background: radial-gradient(circle, rgba(40,30,0,1) 0%, rgba(1,5,2,1) 100%);
+            border-bottom-color: var(--neon-yellow);
+            color: var(--neon-yellow);
         }
 
         .welcome-text {
@@ -251,6 +263,12 @@
         }
         .theme-space h1 {
             text-shadow: 0 0 10px var(--neon-blue), 0 0 30px var(--neon-blue), 0 0 50px var(--neon-blue);
+        }
+        .theme-brick h1 {
+            text-shadow: 0 0 10px var(--neon-purple), 0 0 30px var(--neon-purple), 0 0 50px var(--neon-purple);
+        }
+        .theme-tetris h1 {
+            text-shadow: 0 0 10px var(--neon-yellow), 0 0 30px var(--neon-yellow), 0 0 50px var(--neon-yellow);
         }
 
         .tagline {
@@ -290,6 +308,14 @@
             background-color: var(--neon-blue);
             box-shadow: 0 0 20px var(--neon-blue);
         }
+        .theme-brick .btn-play-now {
+            background-color: var(--neon-purple);
+            box-shadow: 0 0 20px var(--neon-purple);
+        }
+        .theme-tetris .btn-play-now {
+            background-color: var(--neon-yellow);
+            box-shadow: 0 0 20px var(--neon-yellow);
+        }
         .btn-play-now:active {
             transform: scale(0.96);
         }
@@ -312,6 +338,16 @@
             border-color: var(--neon-purple);
             box-shadow: 0 0 8px rgba(188, 19, 254, 0.3);
         }
+        .theme-brick .btn-scroll-desc {
+            color: var(--neon-blue);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+        .theme-tetris .btn-scroll-desc {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 8px rgba(255, 0, 85, 0.3);
+        }
         .btn-scroll-desc:hover, .btn-scroll-desc:active {
             color: #000;
             background-color: var(--neon-blue);
@@ -321,6 +357,14 @@
         .theme-space .btn-scroll-desc:hover {
             background-color: var(--neon-purple);
             box-shadow: 0 0 15px var(--neon-purple);
+        }
+        .theme-brick .btn-scroll-desc:hover {
+            background-color: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+        .theme-tetris .btn-scroll-desc:hover {
+            background-color: var(--neon-pink);
+            box-shadow: 0 0 15px var(--neon-pink);
         }
 
         /* 他のGAMEへのボタン */
@@ -497,7 +541,6 @@
             .btn-scroll-desc, .btn-scroll-other { font-size: 0.85rem; padding: 6px 20px; }
             .nav-menu { width: 100%; right: -100%; }
             
-            /* モバイルではQRコードを少し下げてバーガーボタンとの干渉を防ぐ */
             .qr-container {
                 top: 70px;
             }
@@ -515,12 +558,13 @@
     <nav class="nav-menu" id="navMenu">
         <a href="#home" class="nav-item">CAR ROAD</a>
         <a href="#space-shooter" class="nav-item">SPACE SHOOTER</a>
+        <a href="#brick-smasher" class="nav-item">CYBER BRICK</a>
+        <a href="#cyber-tetris" class="nav-item">CYBER TETRIS</a>
         <a href="#disclaimer" class="nav-item">DISCLAIMER</a>
     </nav>
 
     <!-- GAME 1: CAR ROAD GAME -->
     <header id="home" class="theme-car">
-        <!-- QRコードセクション -->
         <div class="qr-container">
             <p class="qr-label">-- SCAN TO PLAY --</p>
             <div class="qr-wrapper" id="qrTrigger">
@@ -548,6 +592,33 @@
         <div class="hero-buttons">
             <button class="btn-play-now" onclick="window.location.href='Space Shooter Game.html'">PLAY GAME NOW</button>
             <button class="btn-scroll-desc" id="scrollSpaceDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollSpaceOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 3: CYBER BRICK SMASHER -->
+    <header id="brick-smasher" class="theme-brick">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>CYBER BRICK SMASHER<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ ブロック崩し ]</span><br><span style="color:var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);">OFFICIAL</span></h1>
+        <p class="tagline">デジタル世界を構築する壁を粉砕せよ。精密なコントロールと反射神経が試される、究極の破壊体験。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='Brick Breaker.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollBrickDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollBrickOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 4: CYBER TETRIS -->
+    <header id="cyber-tetris" class="theme-tetris">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>CYBER TETRIS<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ テトリス ]</span><br><span style="color:var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink);">OFFICIAL</span></h1>
+        <p class="tagline">降り注ぐデジタル・ブロックを完璧に制御せよ。思考速度と空間把握能力の限界に挑む、永遠のパズル。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='Tetris.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollTetrisDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollTetrisOtherBtn">【他のGAMEへ】</button>
         </div>
     </header>
 
@@ -597,6 +668,50 @@
             </div>
         </section>
 
+        <!-- CYBER BRICK Description -->
+        <section id="brick-description">
+            <h2>CYBER BRICK SMASHER の説明</h2>
+            <p>『CYBER BRICK SMASHER』は、古典的なブロック崩しのルールに、サイバーパンクな視覚演出と高速レスポンスを融合させたアーケードゲームです。</p>
+            <p>物理演算に基づいたボールの挙動と、絶妙なパドルの操作感により、シンプルながらも奥深い中毒性のあるゲームプレイを実現しました。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-purple);">
+                    <h3>💎 精密物理シミュレーション</h3>
+                    <p>壁やパドルに当たる角度によって変化する反射軌道。計算し尽くされた弾道で効率的にブロックを破壊せよ。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-purple);">
+                    <h3>⚡ ダイナミック・スピードアップ</h3>
+                    <p>ブロックを破壊するたびに、あるいは時間が経過するごとにボールが加速。限界まで高まる緊張感を楽しめます。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-purple);">
+                    <h3>🕹️ インスタント・コントロール</h3>
+                    <p>遅延を極限まで抑えた入力系を搭載。PCのキーボードはもちろん、スマホのタッチスライド操作にも完全対応しています。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CYBER TETRIS Description -->
+        <section id="tetris-description">
+            <h2>CYBER TETRIS の説明</h2>
+            <p>『CYBER TETRIS』は、世界中で愛される落ち物パズルの金字塔に、ネオンが彩るサイバー空間の美学を融合させたハイパー・パズルゲームです。</p>
+            <p>次々に降り注ぐテトリミノを隙間なく配置し、ラインを消去してスコアを稼ぎましょう。レベルが上がるごとに加速するブロックが、あなたの精神的限界を試します。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-yellow);">
+                    <h3>🧩 戦略的ライン消去</h3>
+                    <p>単なる配置ではなく、後々の展開を見据えた戦略的構築が必要。一回のミスが致命的な積み上がりを招きます。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-yellow);">
+                    <h3>🕒 高速落下・ハードモード</h3>
+                    <p>レベル上昇に伴い、落下速度が加速度的に上昇。究極の反射神経と冷静な判断力が求められる設計です。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-yellow);">
+                    <h3>🌈 ネオン・ビジュアル・エフェクト</h3>
+                    <p>ライン消去時に発生する鮮烈な閃光と、サイバー空間をイメージした色彩設計が、プレイの没入感を高めます。</p>
+                </div>
+            </div>
+        </section>
+
         <section id="disclaimer">
             <h2>免責事項（注意事項）</h2>
             <div class="disclaimer-box">
@@ -616,7 +731,6 @@
 
     <div class="scroll-top-btn" id="scrollTopBtn">▲</div>
 
-    <!-- ★追加：QRコード拡大モーダル -->
     <div id="qrModal" class="qr-modal">
         <span class="qr-modal-close" id="qrClose">&times;</span>
         <img class="qr-modal-content" id="qrModalImg">
@@ -641,42 +755,57 @@
             });
         });
 
-        // 2. スクロール制御（CAR GAME）
+        // 2. スクロール制御
         const scrollCarDescBtn = document.getElementById('scrollCarDescBtn');
         const carDescriptionSection = document.getElementById('car-description');
-
         scrollCarDescBtn.addEventListener('click', () => {
-            carDescriptionSection.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
+            carDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
-        // 2-2. スクロール制御（他のGAMEへ）
         const scrollOtherBtn = document.getElementById('scrollOtherBtn');
         const spaceShooterSection = document.getElementById('space-shooter');
-
         scrollOtherBtn.addEventListener('click', () => {
-            spaceShooterSection.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
+            spaceShooterSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
-        // 2-3. スクロール制御（SPACE SHOOTER）
         const scrollSpaceDescBtn = document.getElementById('scrollSpaceDescBtn');
         const spaceDescriptionSection = document.getElementById('space-description');
-
         scrollSpaceDescBtn.addEventListener('click', () => {
-            spaceDescriptionSection.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
+            spaceDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        const scrollSpaceOtherBtn = document.getElementById('scrollSpaceOtherBtn');
+        const brickSmasherSection = document.getElementById('brick-smasher');
+        scrollSpaceOtherBtn.addEventListener('click', () => {
+            brickSmasherSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        const scrollBrickDescBtn = document.getElementById('scrollBrickDescBtn');
+        const brickDescriptionSection = document.getElementById('brick-description');
+        scrollBrickDescBtn.addEventListener('click', () => {
+            brickDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        const scrollBrickOtherBtn = document.getElementById('scrollBrickOtherBtn');
+        const cyberTetrisSection = document.getElementById('cyber-tetris');
+        scrollBrickOtherBtn.addEventListener('click', () => {
+            cyberTetrisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        const scrollTetrisDescBtn = document.getElementById('scrollTetrisDescBtn');
+        const tetrisDescriptionSection = document.getElementById('tetris-description');
+        scrollTetrisDescBtn.addEventListener('click', () => {
+            tetrisDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        const scrollTetrisOtherBtn = document.getElementById('scrollTetrisOtherBtn');
+        const homeSection = document.getElementById('home');
+        scrollTetrisOtherBtn.addEventListener('click', () => {
+            homeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
         // 3. ▲上に戻るボタンの制御
         const scrollTopBtn = document.getElementById('scrollTopBtn');
-
         window.addEventListener('scroll', () => {
             if (window.scrollY > 300) {
                 scrollTopBtn.classList.add('visible');
@@ -684,22 +813,13 @@
                 scrollTopBtn.classList.remove('visible');
             }
         });
-
         scrollTopBtn.addEventListener('click', () => {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
         // 4. コンテンツがふわっと表示されるエフェクト
         const sections = document.querySelectorAll('section');
-        const observerOptions = {
-            root: null,
-            rootMargin: '0px',
-            threshold: 0.15
-        };
-
+        const observerOptions = { root: null, rootMargin: '0px', threshold: 0.15 };
         const sectionObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -708,30 +828,26 @@
                 }
             });
         }, observerOptions);
-
         sections.forEach(section => {
             sectionObserver.observe(section);
         });
 
-        // ★追加：QRコード拡大モーダルの制御
+        // QRコード拡大モーダルの制御
         const qrTrigger = document.getElementById('qrTrigger');
         const qrModal = document.getElementById('qrModal');
         const qrModalImg = document.getElementById('qrModalImg');
         const qrClose = document.getElementById('qrClose');
         const qrCodeImg = document.querySelector('.qr-code-img');
 
-        // QRコードをクリックしたらモーダルを表示
         qrTrigger.addEventListener('click', () => {
             qrModal.style.display = 'flex';
             qrModalImg.src = qrCodeImg.src;
         });
-
-        // モーダル内のどこか、または×ボタンをクリックしたら閉じる
         qrModal.addEventListener('click', () => {
             qrModal.style.display = 'none';
         });
         qrClose.addEventListener('click', (e) => {
-            e.stopPropagation(); // 親要素(modal)へのクリックイベント伝播を防ぐ
+            e.stopPropagation();
             qrModal.style.display = 'none';
         });
     </script>
