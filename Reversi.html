@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>NEON REVERSI - DISTRESSED</title>
+    <style>
+        :root { 
+            --bg-color: #010402; 
+            --text-color: #33ff66; 
+            --accent-color: #ff0055; 
+            --glow: 0 0 15px;
+        }
+        
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 4px 4px;
+            pointer-events: none;
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Courier New', monospace; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0; 
+            text-shadow: var(--glow) var(--text-color);
+        }
+        
+        #hud { 
+            border: 2px solid var(--text-color); 
+            padding: 10px 20px; 
+            width: 320px; 
+            margin-bottom: 20px; 
+            text-align: center; 
+            box-shadow: var(--glow) var(--text-color);
+            opacity: 0.9;
+        }
+        
+        #board { 
+            display: grid; 
+            grid-template-columns: repeat(8, 40px); 
+            grid-template-rows: repeat(8, 40px); 
+            gap: 2px; 
+            background: var(--text-color); 
+            border: 2px solid var(--text-color);
+            width: 334px; height: 334px;
+            box-shadow: var(--glow) var(--text-color);
+        }
+        
+        .cell { width: 40px; height: 40px; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        .disc { width: 30px; height: 30px; border-radius: 50%; transition: 0.3s; }
+        .black { background: #fff; box-shadow: var(--glow) #fff; }
+        .white { background: var(--text-color); box-shadow: var(--glow) var(--text-color); }
+        
+        #menu { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        button { 
+            background: transparent; 
+            color: var(--text-color); 
+            border: 2px solid var(--text-color); 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            font-family: inherit;
+            box-shadow: var(--glow) var(--text-color);
+        }
+        button:hover { background: var(--text-color); color: #000; }
+        
+        #msg { color: var(--accent-color); font-size: 1.5rem; margin-top: 15px; font-weight: bold; text-shadow: var(--glow) var(--accent-color); }
+
+        #lvl-anim {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 3.5rem;
+            font-weight: 900;
+            font-family: sans-serif;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            white-space: nowrap;
+        }
+        .up { color: var(--accent-color); text-shadow: 0 0 15px var(--text-color); }
+        .down { color: #3366ff; text-shadow: 0 0 15px #fff; }
+
+        @keyframes popUp {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="lvl-anim"></div>
+    <h1>NEON REVERSI</h1>
+    
+    <div id="hud">PLAYER: <span id="p-lvl">LV.1</span> | AI: <span id="ai-lvl">LV.1</span></div>
+    
+    <div id="board"></div>
+    <div id="msg">SELECT COLOR</div>
+
+    <div id="menu">
+        <button onclick="startGame(1)">先手(●)で開始</button>
+        <button onclick="startGame(-1)">後手(○)で開始</button>
+    </div>
+
+<script>
+    let board, currentPlayer, playerColor;
+    let pLvl = parseInt(localStorage.getItem('pLvl')) || 1;
+    let aLvl = parseInt(localStorage.getItem('aLvl')) || 1;
+    let lastPLvl = pLvl;
+    let lastALvl = aLvl;
+    let aiLossCount = parseInt(localStorage.getItem('aiLossCount')) || 0;
+
+    document.getElementById('p-lvl').textContent = "LV." + pLvl;
+    document.getElementById('ai-lvl').textContent = "LV." + aLvl;
+
+    function startGame(p) {
+        playerColor = p;
+        document.getElementById('menu').style.display = 'none';
+        initBoard();
+    }
+
+    function initBoard() {
+        board = Array(8).fill().map(() => Array(8).fill(0));
+        board[3][3] = -1; board[3][4] = 1; board[4][3] = 1; board[4][4] = -1;
+        currentPlayer = 1;
+        document.getElementById('msg').textContent = "GAME START";
+        render();
+        if (currentPlayer !== playerColor) setTimeout(aiTurn, 500);
+    }
+
+    function showLevelAnim(text, type) {
+        const anim = document.getElementById('lvl-anim');
+        anim.textContent = text;
+        anim.className = type;
+        anim.style.animation = 'none';
+        anim.offsetHeight;
+        anim.style.animation = 'popUp 1.5s ease-out forwards';
+    }
+
+    function saveLevels() {
+        if (pLvl > lastPLvl) showLevelAnim("レベルUP", "up");
+        else if (pLvl < lastPLvl || aLvl < lastALvl) showLevelAnim("レベルDOWN", "down");
+        
+        lastPLvl = pLvl;
+        lastALvl = aLvl;
+
+        localStorage.setItem('pLvl', pLvl);
+        localStorage.setItem('aLvl', aLvl);
+        localStorage.setItem('aiLossCount', aiLossCount);
+        document.getElementById('p-lvl').textContent = "LV." + pLvl;
+        document.getElementById('ai-lvl').textContent = "LV." + aLvl;
+    }
+
+    function getValidMoves(b, color) {
+        let moves = [];
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            if(b[r][c] !== 0) continue;
+            for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++) {
+                if(dr===0 && dc===0) continue;
+                let nr=r+dr, nc=c+dc, flipped=0;
+                while(nr>=0 && nr<8 && nc>=0 && nc<8 && b[nr][nc] === -color) { nr+=dr; nc+=dc; flipped++; }
+                if(flipped > 0 && nr>=0 && nr<8 && nc>=0 && nc<8 && b[nr][nc] === color) { moves.push([r,c]); dr=2; dc=2; }
+            }
+        }
+        return moves;
+    }
+
+    function place(b, r, c, color) {
+        b[r][c] = color;
+        for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++) {
+            if(dr===0 && dc===0) continue;
+            let nr=r+dr, nc=c+dc, flips = [];
+            while(nr>=0 && nr<8 && nc>=0 && nc<8 && b[nr][nc] === -color) { flips.push([nr, nc]); nr+=dr; nc+=dc; }
+            if(flips.length > 0 && nr>=0 && nr<8 && nc>=0 && nc<8 && b[nr][nc] === color) flips.forEach(f => b[f[0]][f[1]] = color);
+        }
+    }
+
+    function checkGameStatus() {
+        const pMoves = getValidMoves(board, 1);
+        const aMoves = getValidMoves(board, -1);
+        if (pMoves.length > 0 || aMoves.length > 0) return false;
+
+        let bScore = board.flat().filter(c => c === 1).length;
+        let wScore = board.flat().filter(c => c === -1).length;
+        let pScore = playerColor === 1 ? bScore : wScore;
+        let aScore = playerColor === 1 ? wScore : bScore;
+        
+        let result = pScore > aScore ? "WIN" : (aScore > pScore ? "LOST" : "DRAW");
+        
+        if (result === "WIN") {
+            pLvl++; aLvl++;
+            aiLossCount = 0;
+        } else if (result === "LOST") {
+            pLvl = Math.max(1, pLvl - 1);
+            aiLossCount++;
+            if (aiLossCount >= 2) {
+                aLvl = Math.max(1, aLvl - 1);
+                aiLossCount = 0;
+            }
+        }
+        
+        saveLevels();
+        document.getElementById('msg').textContent = `${result} (${pScore}:${aScore})`;
+        
+        setTimeout(() => {
+            document.getElementById('menu').style.display = 'flex';
+        }, 2000);
+        return true;
+    }
+
+    function render() {
+        const boardEl = document.getElementById('board');
+        boardEl.innerHTML = '';
+        let valid = getValidMoves(board, playerColor);
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            let cell = document.createElement('div');
+            cell.className = 'cell';
+            if(board[r][c] !== 0) {
+                let disc = document.createElement('div');
+                disc.className = 'disc ' + (board[r][c] === 1 ? 'black' : 'white');
+                cell.appendChild(disc);
+            } else if(currentPlayer === playerColor && valid.some(m => m[0]===r && m[1]===c)) {
+                cell.onclick = () => {
+                    place(board, r, c, playerColor);
+                    currentPlayer = -currentPlayer;
+                    render();
+                    setTimeout(aiTurn, 500);
+                };
+            }
+            boardEl.appendChild(cell);
+        }
+    }
+
+    function aiTurn() {
+        if (checkGameStatus()) return;
+        let moves = getValidMoves(board, -playerColor);
+        if (moves.length === 0) {
+            document.getElementById('msg').textContent = "PASS";
+            currentPlayer = playerColor;
+            render();
+            return;
+        }
+        let choice = moves[Math.floor(Math.random() * moves.length)];
+        place(board, choice[0], choice[1], -playerColor);
+        currentPlayer = playerColor;
+        render();
+        checkGameStatus();
+    }
+</script>
+</body>
+</html>
