@@ -17,6 +17,7 @@
             --neon-blue: #00f0ff;
             --neon-purple: #bc13fe;
             --neon-yellow: #ffff00; /* テトリス用に追加 */
+            --neon-orange: #f08300; /* リバーシ用に追加 */
             --text-muted: #7fa886;
         }
 
@@ -545,6 +546,20 @@
                 top: 70px;
             }
         }
+
+        /* リバーシのテーマ定義 */
+        .theme-reversi {
+            background: radial-gradient(circle, rgba(50,30,0,1) 0%, rgba(1,5,2,1) 100%);
+            border-bottom-color: var(--neon-orange);
+            color: var(--neon-orange);
+        }
+        .theme-reversi h1 {
+            text-shadow: 0 0 10px var(--neon-orange), 0 0 30px var(--neon-orange), 0 0 50px var(--neon-orange);
+        }
+        .theme-reversi .btn-play-now {
+            background-color: var(--neon-orange);
+            box-shadow: 0 0 20px var(--neon-orange);
+        }
     </style>
 </head>
 <body>
@@ -560,7 +575,8 @@
         <a href="#space-shooter" class="nav-item">SPACE SHOOTER</a>
         <a href="#brick-smasher" class="nav-item">CYBER BRICK</a>
         <a href="#cyber-tetris" class="nav-item">CYBER TETRIS</a>
-        <a href="#disclaimer" class="nav-item">DISCLAIMER</a>
+        <a href="#reversi" class="nav-item">NEON REVERSI</a>
+        <a href="#disclaimer" class="nav-item">免責事項（注意事項）</a>
     </nav>
 
     <!-- GAME 1: CAR ROAD GAME -->
@@ -619,6 +635,19 @@
             <button class="btn-play-now" onclick="window.location.href='Tetris.html'">PLAY GAME NOW</button>
             <button class="btn-scroll-desc" id="scrollTetrisDescBtn">【ゲームの説明】</button>
             <button class="btn-scroll-other" id="scrollTetrisOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 5: NEON REVERSI -->
+    <header id="reversi" class="theme-reversi">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>NEON REVERSI<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ リバーシ ]</span><br><span style="color:var(--neon-orange); text-shadow: 0 0 10px var(--neon-orange);">OFFICIAL</span></h1>
+        <p class="tagline">盤上を支配する思考の戦い。AIの知能はプレイヤーの勝利とともに進化し、敗北の積み重ねによってその階級を落とす。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='Reversi.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollReversiDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollReversiOtherBtn">【他のGAMEへ】</button>
         </div>
     </header>
 
@@ -710,6 +739,28 @@
                     <p>ライン消去時に発生する鮮烈な閃光と、サイバー空間をイメージした色彩設計が、プレイの没入感を高めます。</p>
                 </div>
             </div>
+
+        </section>
+        <!-- NEON REVERSI Description -->
+        <section id="reversi-description">
+            <h2>NEON REVERSI の説明</h2>
+            <p>『NEON REVERSI』は、プレイヤーの対局結果に応じてAIが成長・衰退する、進化したリバーシ・シミュレーターです。</p>
+            <p>頭脳ゲームにAI学習を装備。レベルが上がるごとに強くなるAIが、あなたの頭脳の限界を試します。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-orange);">
+                    <h3>🧠 AI学習システム</h3>
+                    <p>プレイヤーが勝利するたびにAIは学習し、次のレベルで強さを増します。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-orange);">
+                    <h3>🕒 AIレベルアップ規定</h3>
+                    <p>プレイヤーが１回勝利すると、AIの知能レベルは一段階アップします。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-orange);">
+                    <h3>📉 AIレベルダウン規定</h3>
+                    <p>プレイヤーが2回敗北すると、AIの知能レベルは一段階ダウンします。</p>
+                </div>
+            </div>
         </section>
 
         <section id="disclaimer">
@@ -738,74 +789,95 @@
 
 
     <script>
-        // 1. ハンバーガーメニューの開閉
-        const burgerBtn = document.getElementById('burgerBtn');
-        const navMenu = document.getElementById('navMenu');
-        const navItems = document.querySelectorAll('.nav-item');
+document.addEventListener('DOMContentLoaded', () => {
+    // ハンバーガーメニューの開閉
+    const burgerBtn = document.querySelector('.burger-btn');
+    const navMenu = document.getElementById('navMenu');
 
+    if (burgerBtn && navMenu) {
         burgerBtn.addEventListener('click', () => {
             burgerBtn.classList.toggle('active');
             navMenu.classList.toggle('open');
         });
+    }
 
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                burgerBtn.classList.remove('active');
-                navMenu.classList.remove('open');
-            });
+    // 各メニュー項目をクリックしたらメニューを閉じる処理
+    const navLinks = document.querySelectorAll('.nav-menu a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (burgerBtn) burgerBtn.classList.remove('active');
+            if (navMenu) navMenu.classList.remove('open');
         });
+    });
 
-        // 2. スクロール制御
-        const scrollCarDescBtn = document.getElementById('scrollCarDescBtn');
-        const carDescriptionSection = document.getElementById('car-description');
+    // 2. スクロール制御
+    const scrollCarDescBtn = document.getElementById('scrollCarDescBtn');
+    const carDescriptionSection = document.getElementById('car-description');
+    if (scrollCarDescBtn && carDescriptionSection) {
         scrollCarDescBtn.addEventListener('click', () => {
             carDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollOtherBtn = document.getElementById('scrollOtherBtn');
-        const spaceShooterSection = document.getElementById('space-shooter');
+    const scrollOtherBtn = document.getElementById('scrollOtherBtn');
+    const spaceShooterSection = document.getElementById('space-shooter');
+    if (scrollOtherBtn && spaceShooterSection) {
         scrollOtherBtn.addEventListener('click', () => {
             spaceShooterSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollSpaceDescBtn = document.getElementById('scrollSpaceDescBtn');
-        const spaceDescriptionSection = document.getElementById('space-description');
+    const scrollSpaceDescBtn = document.getElementById('scrollSpaceDescBtn');
+    const spaceDescriptionSection = document.getElementById('space-description');
+    if (scrollSpaceDescBtn && spaceDescriptionSection) {
         scrollSpaceDescBtn.addEventListener('click', () => {
             spaceDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollSpaceOtherBtn = document.getElementById('scrollSpaceOtherBtn');
-        const brickSmasherSection = document.getElementById('brick-smasher');
+    const scrollSpaceOtherBtn = document.getElementById('scrollSpaceOtherBtn');
+    const brickSmasherSection = document.getElementById('brick-smasher');
+    if (scrollSpaceOtherBtn && brickSmasherSection) {
         scrollSpaceOtherBtn.addEventListener('click', () => {
             brickSmasherSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollBrickDescBtn = document.getElementById('scrollBrickDescBtn');
-        const brickDescriptionSection = document.getElementById('brick-description');
+    const scrollBrickDescBtn = document.getElementById('scrollBrickDescBtn');
+    const brickDescriptionSection = document.getElementById('brick-description');
+    if (scrollBrickDescBtn && brickDescriptionSection) {
         scrollBrickDescBtn.addEventListener('click', () => {
             brickDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollBrickOtherBtn = document.getElementById('scrollBrickOtherBtn');
-        const cyberTetrisSection = document.getElementById('cyber-tetris');
+    const scrollBrickOtherBtn = document.getElementById('scrollBrickOtherBtn');
+    const cyberTetrisSection = document.getElementById('cyber-tetris');
+    if (scrollBrickOtherBtn && cyberTetrisSection) {
         scrollBrickOtherBtn.addEventListener('click', () => {
             cyberTetrisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollTetrisDescBtn = document.getElementById('scrollTetrisDescBtn');
-        const tetrisDescriptionSection = document.getElementById('tetris-description');
+    const scrollTetrisDescBtn = document.getElementById('scrollTetrisDescBtn');
+    const tetrisDescriptionSection = document.getElementById('tetris-description');
+    if (scrollTetrisDescBtn && tetrisDescriptionSection) {
         scrollTetrisDescBtn.addEventListener('click', () => {
             tetrisDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        const scrollTetrisOtherBtn = document.getElementById('scrollTetrisOtherBtn');
-        const homeSection = document.getElementById('home');
+    const scrollTetrisOtherBtn = document.getElementById('scrollTetrisOtherBtn');
+    const reversiHeaderSection = document.getElementById('reversi');
+    if (scrollTetrisOtherBtn && reversiHeaderSection) {
         scrollTetrisOtherBtn.addEventListener('click', () => {
-            homeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            reversiHeaderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    }
 
-        // 3. ▲上に戻るボタンの制御
-        const scrollTopBtn = document.getElementById('scrollTopBtn');
+    // 3. ▲上に戻るボタンの制御
+    const scrollTopBtn = document.getElementById('scrollTopBtn');
+    if (scrollTopBtn) {
         window.addEventListener('scroll', () => {
             if (window.scrollY > 300) {
                 scrollTopBtn.classList.add('visible');
@@ -816,40 +888,75 @@
         scrollTopBtn.addEventListener('click', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+    }
 
-        // 4. コンテンツがふわっと表示されるエフェクト
-        const sections = document.querySelectorAll('section');
-        const observerOptions = { root: null, rootMargin: '0px', threshold: 0.15 };
-        const sectionObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('is-visible');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-        sections.forEach(section => {
-            sectionObserver.observe(section);
+    // 4. コンテンツがふわっと表示されるエフェクト
+    const sections = document.querySelectorAll('section');
+    const observerOptions = { root: null, rootMargin: '0px', threshold: 0.15 };
+    const sectionObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+            }
         });
+    }, observerOptions);
+    sections.forEach(section => {
+        sectionObserver.observe(section);
+    });
 
-        // QRコード拡大モーダルの制御
-        const qrTrigger = document.getElementById('qrTrigger');
-        const qrModal = document.getElementById('qrModal');
-        const qrModalImg = document.getElementById('qrModalImg');
-        const qrClose = document.getElementById('qrClose');
-        const qrCodeImg = document.querySelector('.qr-code-img');
+    // QRコード拡大モーダルの制御
+    const qrTrigger = document.getElementById('qrTrigger');
+    const qrModal = document.getElementById('qrModal');
+    const qrModalImg = document.getElementById('qrModalImg');
+    const qrClose = document.getElementById('qrClose');
+    const qrCodeImg = document.querySelector('.qr-code-img');
 
+    if (qrTrigger && qrModal && qrModalImg && qrCodeImg) {
         qrTrigger.addEventListener('click', () => {
             qrModal.style.display = 'flex';
             qrModalImg.src = qrCodeImg.src;
         });
+    }
+    if (qrModal) {
         qrModal.addEventListener('click', () => {
             qrModal.style.display = 'none';
         });
+    }
+    if (qrClose) {
         qrClose.addEventListener('click', (e) => {
             e.stopPropagation();
             qrModal.style.display = 'none';
         });
+    }
+});
+
+// ============================================================
+// ▼ ここから NEON REVERSI 用の追記スクリプト ▼
+// 既存のロジック（上のDOMContentLoadedブロック）は変更せず、
+// 別のDOMContentLoadedリスナーとして安全に追記しています。
+// 対象要素が存在しない場合でもエラーで停止しないよう、
+// 必ずif文で存在チェックを行っています。
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // 【ゲームの説明】ボタン → reversi-description セクションへスクロール
+    const scrollReversiDescBtn = document.getElementById('scrollReversiDescBtn');
+    const reversiDescriptionSection = document.getElementById('reversi-description');
+    if (scrollReversiDescBtn && reversiDescriptionSection) {
+        scrollReversiDescBtn.addEventListener('click', () => {
+            reversiDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // 【他のGAMEへ】ボタン → 先頭(home)セクションへループして戻る
+    const scrollReversiOtherBtn = document.getElementById('scrollReversiOtherBtn');
+    const homeSection = document.getElementById('home');
+    if (scrollReversiOtherBtn && homeSection) {
+        scrollReversiOtherBtn.addEventListener('click', () => {
+            homeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+});
     </script>
 </body>
 </html>
