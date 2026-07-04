@@ -354,13 +354,14 @@
         // スコアが下がれば難易度レベルも即座に下がる（レベルは常に現在スコアから算出）。
         const DIFFICULTY_RAMP_START_SCORE = ENEMY_UNLOCK_SCORE_STAR; // 1000
         const DIFFICULTY_RAMP_SCORE_STEP = 500;
-        const DIFFICULTY_ENEMY_SPEED_STEP = 0.15;   // 敵の移動速度が難易度レベル1につき+15%
-        const DIFFICULTY_BULLET_SPEED_STEP = 0.12;  // 敵弾の速度が難易度レベル1につき+12%
-        const ENEMY_SPAWN_COOLDOWN_BASE = 140;
-        const ENEMY_SPAWN_COOLDOWN_SCORE_DIVISOR = 10;
-        const ENEMY_SPAWN_COOLDOWN_FLOOR_BASE = 50;
-        const ENEMY_SPAWN_COOLDOWN_FLOOR_STEP = 4;
-        const ENEMY_SPAWN_COOLDOWN_FLOOR_MIN = 25;
+        const DIFFICULTY_ENEMY_SPEED_STEP = 0.15;   // 敵の移動速度が難易度レベル1につき+15%（スピード感は維持）
+        const DIFFICULTY_BULLET_SPEED_STEP = 0.12;  // 敵弾の速度が難易度レベル1につき+12%（スピード感は維持）
+        // ★出現間隔を全体的に長めに調整（敵の物量を抑える）
+        const ENEMY_SPAWN_COOLDOWN_BASE = 190;
+        const ENEMY_SPAWN_COOLDOWN_SCORE_DIVISOR = 14;
+        const ENEMY_SPAWN_COOLDOWN_FLOOR_BASE = 65;
+        const ENEMY_SPAWN_COOLDOWN_FLOOR_STEP = 3;
+        const ENEMY_SPAWN_COOLDOWN_FLOOR_MIN = 45;
 
         // --- 猛攻フェーズ（スコア2000点超）---
         // 敵4種すべてが左右に動きながら攻撃するようになる代わりに、
@@ -372,8 +373,9 @@
         const ENEMY_HIT_PADDING = 8;       // 自機弾と敵の当たり判定の余白
         const ENEMY_ESCAPE_LINE = V_HEIGHT - 5; // このYを超えると「取り逃し」扱い
         const ENEMY_MISS_PENALTY = 50;     // 取り逃し時の減点
-        const ENEMY_SHOOT_COOLDOWN_MAX = 50;
-        const ENEMY_SHOOT_CHANCE = 0.2;    // 敵が弾を撃つ確率（猛攻フェーズ前は〇を除く）
+        // ★攻撃頻度・攻撃確率を抑える（弾の物量を減らす）
+        const ENEMY_SHOOT_COOLDOWN_MAX = 80;
+        const ENEMY_SHOOT_CHANCE = 0.10;   // 敵が弾を撃つ確率（猛攻フェーズ前は〇を除く）
         const ENEMY_BULLET_BASE_SPEED = 2.25;
         const ENEMY_BULLET_CHAR = "！";     // ★敵弾の表示文字（旧: "l"）
 
@@ -1193,4 +1195,3 @@
     </script>
 </body>
 </html>
-
