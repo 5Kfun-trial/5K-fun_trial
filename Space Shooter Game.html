@@ -572,21 +572,66 @@
          * プレイヤー
          *****************************************************************/
 
-        // 攻撃設定：P1=・ / P2=l l / P3=I・I
-        function fireAutoShot() {
-            if (pItemsCollected === 1) {
-                // P1つ：・攻撃（ダメージ1）
-                bullets.push({ x: playerX, y: PLAYER_Y - 10, type: '・', speed: BULLET_SPEED_NORMAL, dmg: BULLET_DMG_NORMAL });
-            } else if (pItemsCollected === 2) {
-                // P2つ：l l 攻撃（2発並列、ダメージ各1）
-                bullets.push({ x: playerX - 8, y: PLAYER_Y - 15, type: 'l', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_NORMAL });
-                bullets.push({ x: playerX + 8, y: PLAYER_Y - 15, type: 'l', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_NORMAL });
-            } else {
-                // P3つ：I・I 攻撃（左にI/中央に・/右にI、ダメージ各2/各1/各2）
-                bullets.push({ x: playerX, y: PLAYER_Y - 10, type: '・', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_NORMAL });
-                bullets.push({ x: playerX - 16, y: PLAYER_Y - 15, type: 'I', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_HEAVY });
-                bullets.push({ x: playerX + 16, y: PLAYER_Y - 15, type: 'I', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_HEAVY });
+        // 自機の見た目（文字列）における各文字の中心X座標を、実際の描画幅を
+        // 計測して正確に求める（ハードコードした目分量のオフセットに頼らない）
+        function getPlayerCharCenters(text, fontSize, centerX) {
+            ctx.font = `bold ${fontSize}px Courier New`;
+            const totalWidth = ctx.measureText(text).width;
+            let cursor = centerX - totalWidth / 2;
+            const centers = [];
+            for (const ch of Array.from(text)) {
+                const w = ctx.measureText(ch).width;
+                centers.push(cursor + w / 2);
+                cursor += w;
             }
+            return centers;
+        }
+
+        // 指定した文字の「頂点（描画上端）」のY座標を実測して求める
+        // （△の頂点や□の上端など、弾を発射する見た目上の先端位置に合わせるため）
+        function getGlyphTopY(ch, fontSize, baselineY) {
+            ctx.font = `bold ${fontSize}px Courier New`;
+            const m = ctx.measureText(ch);
+            const ascent = m.actualBoundingBoxAscent || fontSize * 0.75;
+            return baselineY - ascent;
+        }
+
+        // 攻撃設定：P1=・ / P2=（□の中心からI、△の頂点から・） / P3=（◆の中心からI、■から*）
+        function fireAutoShot() {
+            const visual = getPlayerVisual();
+
+            if (pItemsCollected === 1) {
+                // P1つ：△の頂点（先端）から・攻撃（ダメージ1）
+                const apexY = getGlyphTopY('△', visual.fontSize, PLAYER_Y);
+                bullets.push({ x: playerX, y: apexY, type: '･', speed: BULLET_SPEED_NORMAL, dmg: BULLET_DMG_NORMAL });
+            } else if (pItemsCollected === 2) {
+                // P2つ：□△□ － 真ん中の△の頂点から・、両サイドの□の中心からI
+                const centers = getPlayerCharCenters(visual.text, visual.fontSize, playerX);
+                const squareTopY = getGlyphTopY('□', visual.fontSize, PLAYER_Y);
+                const triangleTopY = getGlyphTopY('△', visual.fontSize, PLAYER_Y);
+
+                bullets.push({ x: centers[0], y: squareTopY, type: 'I', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_NORMAL });
+                bullets.push({ x: centers[1], y: triangleTopY, type: '・', speed: BULLET_SPEED_NORMAL, dmg: BULLET_DMG_NORMAL });
+                bullets.push({ x: centers[2], y: squareTopY, type: 'I', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_NORMAL });
+            } else {
+                // P3つ：◆■◆ － 両サイドの◆の中心からI・I攻撃（中央■からは従来通り*）
+                const centers = getPlayerCharCenters(visual.text, visual.fontSize, playerX);
+                const diamondTopY = getGlyphTopY('◆', visual.fontSize, PLAYER_Y);
+                const squareTopY = getGlyphTopY('■', visual.fontSize, PLAYER_Y);
+
+                bullets.push({ x: centers[1], y: squareTopY, type: '*', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_NORMAL });
+                bullets.push({ x: centers[0], y: diamondTopY, type: 'I', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_HEAVY });
+                bullets.push({ x: centers[2], y: diamondTopY, type: 'I', speed: BULLET_SPEED_FAST, dmg: BULLET_DMG_HEAVY });
+            }
+        }
+
+        // 現在の自機の見た目（文字列）の実描画幅の半分を求める。
+        // レベルによって「△」単体と「□△□」「◆■◆」で幅が異なるため、
+        // 固定マージンではなく実測値を使うことで画面端でのはみ出しを防ぐ。
+        function getPlayerHalfWidth() {
+            const visual = getPlayerVisual();
+            ctx.font = `bold ${visual.fontSize}px Courier New`;
+            return ctx.measureText(visual.text).width / 2;
         }
 
         function updatePlayerMovement() {
@@ -597,8 +642,9 @@
             } else {
                 playerX += moveDirection * PLAYER_SPEED;
             }
-            if (playerX < 15) playerX = 15;
-            if (playerX > V_WIDTH - 15) playerX = V_WIDTH - 15;
+            const margin = getPlayerHalfWidth();
+            if (playerX < margin) playerX = margin;
+            if (playerX > V_WIDTH - margin) playerX = V_WIDTH - margin;
         }
 
         function updatePlayerShooting() {
@@ -853,7 +899,7 @@
 
         function renderPlayerBullets() {
             bullets.forEach(b => {
-                if (b.type === 'I') {
+                if (b.type === '|') {
                     ctx.shadowColor = COLOR_NEON_BLUE;
                     ctx.fillStyle = COLOR_NEON_BLUE;
                     ctx.font = "bold 22px Courier New";
@@ -914,7 +960,7 @@
 
         function getPlayerVisual() {
             if (pItemsCollected === 2) return { text: "□△□", fontSize: 22 };
-            if (pItemsCollected === 3) return { text: "◆▲◆", fontSize: 22 };
+            if (pItemsCollected === 3) return { text: "◆■◆", fontSize: 22 };
             return { text: "△", fontSize: 24 };
         }
 
@@ -925,10 +971,16 @@
             //   通常時: 黄色 / 無敵中: 白色
             const playerColor = invincibilityTimer > 0 ? COLOR_WHITE : COLOR_NEON_YELLOW;
 
+            // textAlignを"center"にすることで、playerX（当たり判定の中心座標）と
+            // 実際の描画中心を一致させる（従来はデフォルトの"start"で左寄せ描画されて
+            // いたため、当たり判定・弾の発射位置・画面端クランプの基準とズレていた）
+            ctx.save();
+            ctx.textAlign = "center";
             ctx.shadowColor = playerColor;
             ctx.fillStyle = playerColor;
             ctx.font = `bold ${visual.fontSize}px Courier New`;
             ctx.fillText(visual.text, playerX, PLAYER_Y);
+            ctx.restore();
         }
 
         // ステータス表示（DOM）の更新。Canvas描画ではないが、
