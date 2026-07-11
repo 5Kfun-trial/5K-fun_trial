@@ -4,17 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CAR Road GAME</title>
-    
+
     <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-color: #020703;
-            --text-color: #33ff66; 
-            --accent-color: #ff0055;
+            --bg-color: #05010f;
+            --text-color: #00fff2;      /* neon cyan (was terminal green) */
+            --accent-color: #ff2e92;    /* neon magenta (was red) */
+            --neon-yellow: #ffe45e;
+            --neon-purple: #7b2ff7;
         }
 
-        /* 画面全体のスクロールを完全にロック */
         html, body {
             width: 100%;
             height: 100%;
@@ -32,20 +36,19 @@
             align-items: center;
             justify-content: space-between;
             box-sizing: border-box;
-            /* 上下左右の基本余白＋スマホのセーフエリア保護 */
             padding-top: env(safe-area-inset-top, 5px);
-            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 15px); 
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 15px);
             padding-left: 10px;
             padding-right: 10px;
+            background: radial-gradient(ellipse at 50% 25%, #2a0e57 0%, #0a0420 55%, #030110 100%);
         }
 
-        /* ブラウン管フィルター */
         body::after {
             content: " ";
             display: block;
             position: fixed;
             top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%), linear-gradient(90deg, rgba(0, 255, 242, 0.04), rgba(255, 46, 146, 0.02), rgba(123, 47, 247, 0.04));
             z-index: 999;
             background-size: 100% 4px, 6px 100%;
             pointer-events: none;
@@ -60,10 +63,12 @@
         }
 
         h1 {
-            margin: 2px 0;
-            font-size: 1.4rem;
-            font-weight: 900;
-            text-shadow: 0 0 10px var(--text-color), 0 0 20px rgba(51, 255, 102, 0.5);
+            margin: 4px 0 8px 0;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            font-size: 0.95rem;
+            font-weight: 400;
+            color: #fff;
+            text-shadow: 0 0 6px var(--text-color), 0 0 16px var(--accent-color), 0 0 28px var(--neon-purple);
             letter-spacing: 1px;
         }
 
@@ -75,30 +80,33 @@
             font-size: 0.8rem;
             border: 2px solid var(--text-color);
             background: #000;
-            box-shadow: 0 0 15px rgba(51, 255, 102, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 242, 0.25), inset 0 0 10px rgba(255, 46, 146, 0.08);
         }
 
-        /* ゲーム画面エリア */
         #game-area {
             position: relative;
             width: 100%;
             max-width: 400px;
-            flex-grow: 1; 
-            flex-shrink: 1; 
-            min-height: 140px; 
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-height: 140px;
             margin: 5px 0;
             border: 3px solid var(--text-color);
-            background-color: #000;
+            background-color: #05010f;
             overflow: hidden;
             box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end; /* 下部（車側）を基準に道路を配置 */
-            box-shadow: 0 0 25px rgba(51, 255, 102, 0.4);
-            transition: background-color 0.1s, border-color 0.1s;
+            box-shadow: 0 0 25px rgba(0, 255, 242, 0.35), 0 0 55px rgba(255, 46, 146, 0.15);
+            transition: border-color 0.1s;
         }
 
-        /* 破壊時の横ブレと赤画面化エフェクト */
+        #game-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
         @keyframes crash-shake {
             0% { transform: translate(0, 0); }
             10% { transform: translate(-12px, 0); }
@@ -113,38 +121,46 @@
             100% { transform: translate(0, 0); }
         }
 
-        .crash-shake {
-            animation: crash-shake 0.5s ease-out;
+        @keyframes flash-red {
+            0%, 100% { border-color: var(--text-color); }
+            50% { border-color: var(--accent-color); }
         }
 
+        .crash-shake { animation: crash-shake 0.5s ease-out; }
+        .flash-red-animation { animation: flash-red 0.3s 3; }
+
         .crash-red {
-            background-color: #66000c !important;
             border-color: var(--accent-color) !important;
             box-shadow: 0 0 35px var(--accent-color) !important;
         }
 
-        /* 道路表示：文字サイズを適切な大きさに保ちつつ、横幅はみ出しのみを動的に防止 */
-        #road-display {
-            width: 100%;
-            white-space: pre;
-            font-size: min(3.4vw, 15px); 
-            line-height: 0.88; 
-            text-align: left;
-            margin-bottom: 2px;
-            font-weight: bold;
-            text-shadow: 0 0 3px var(--text-color);
+        #boom-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(1.4rem, 9vw, 2.4rem);
+            color: #fff;
+            text-shadow: 0 0 8px var(--neon-yellow), 0 0 24px var(--accent-color), 0 0 48px var(--accent-color);
+            letter-spacing: 2px;
+            z-index: 30;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        #boom-text.show { animation: boom-pop 0.75s ease-out forwards; }
+        @keyframes boom-pop {
+            0%   { transform: translate(-50%, -50%) scale(0.2) rotate(-8deg); opacity: 0; }
+            15%  { transform: translate(-50%, -50%) scale(1.35) rotate(5deg); opacity: 1; }
+            30%  { transform: translate(-50%, -50%) scale(1) rotate(-2deg); opacity: 1; }
+            78%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.12) rotate(0deg); opacity: 0; }
         }
 
-        @media (max-height: 600px) {
-            h1 { font-size: 1.1rem; }
-            .status-container { font-size: 0.7rem; }
-        }
-
-        /* オーバーレイ */
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 5, 2, 0.92);
+            background: rgba(5, 1, 15, 0.92);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -153,142 +169,75 @@
         }
 
         .overlay h2 {
-            font-size: 1.8rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 1.1rem;
             color: var(--accent-color);
-            margin-bottom: 10px;
-            text-shadow: 0 0 12px var(--accent-color);
-            letter-spacing: 3px;
-        }
-
-        .overlay p {
-            margin: 5px 0;
-            font-size: 1rem;
-            letter-spacing: 1px;
-        }
-
-        /* 下部固定のフッターエリア */
-        footer {
-            width: 100%;
-            max-width: 400px;
+            margin-bottom: 14px;
+            text-shadow: 0 0 8px var(--accent-color), 0 0 20px var(--neon-purple);
+            letter-spacing: 2px;
             text-align: center;
-            flex-shrink: 0; 
-            margin-top: auto; 
         }
 
-        /* スタート・リトライボタン・戻るボタンのコンテナ（縦並びに対応） */
+        .overlay p { margin: 5px 0; font-size: 1rem; letter-spacing: 1px; color: var(--text-color); }
+
+        footer { width: 100%; max-width: 400px; text-align: center; flex-shrink: 0; margin-top: auto; }
+
         .action-button-container {
-            width: 100%;
-            height: auto;
-            margin-bottom: 8px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 6px; /* ボタン間の隙間 */
+            width: 100%; height: auto; margin-bottom: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px;
         }
 
         .btn-action {
-            background-color: transparent;
-            color: var(--text-color);
-            border: 2px solid var(--text-color);
-            padding: 6px 30px;
-            font-family: inherit;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(51, 255, 102, 0.4);
-            letter-spacing: 1px;
-            display: inline-block;
+            background-color: transparent; color: var(--text-color); border: 2px solid var(--text-color);
+            padding: 8px 26px; font-family: 'Press Start 2P', monospace; font-size: 0.7rem; font-weight: 400; cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 242, 0.4); letter-spacing: 1px; display: inline-block;
         }
 
-        .btn-action:hover, .btn-action:active {
-            background-color: var(--text-color);
-            color: #000;
-            box-shadow: 0 0 20px var(--text-color);
-        }
+        .btn-action:hover, .btn-action:active { background-color: var(--text-color); color: #000; box-shadow: 0 0 20px var(--text-color); }
 
-        /* スコアデータ表示エリア（左右分割レイアウト） */
         .score-board-container {
-            display: flex;
-            justify-content: space-between;
-            width: 95%;
-            margin: 0 auto 10px auto;
-            font-size: 0.75rem;
-            border-top: 1px dashed rgba(51, 255, 102, 0.3);
-            padding-top: 6px;
-            text-align: left;
+            display: flex; justify-content: space-between; width: 95%; margin: 0 auto 10px auto;
+            font-size: 0.75rem; border-top: 1px dashed rgba(0, 255, 242, 0.3); padding-top: 6px; text-align: left;
         }
 
-        /* 左側：最高スコア */
-        .hi-score-box {
-            width: 45%;
-            color: #fff;
-            text-shadow: 0 0 5px #fff;
-        }
-        .hi-score-box span {
-            color: var(--text-color);
-            font-size: 1.1rem;
-            font-weight: bold;
-            display: block;
-            margin-top: 2px;
-        }
+        .hi-score-box { width: 45%; color: #fff; text-shadow: 0 0 5px #fff; }
+        .hi-score-box span { color: var(--neon-yellow); font-size: 1.1rem; font-weight: bold; display: block; margin-top: 2px; }
 
-        /* 右側：過去10回の履歴 */
-        .history-box {
-            width: 50%;
-            text-align: right;
-            max-height: 48px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.7rem;
-            color: #8cba94;
-            line-height: 1.2;
-            padding-right: 2px;
-        }
-        /* スクロールバーをおしゃれに隠す/微調整 */
-        .history-box::-webkit-scrollbar {
-            width: 3px;
-        }
-        .history-box::-webkit-scrollbar-thumb {
-            background: var(--text-color);
-        }
+        .history-box { width: 50%; text-align: right; max-height: 48px; overflow-y: auto; font-family: monospace; font-size: 0.7rem; color: #b18cf0; line-height: 1.2; padding-right: 2px; }
+        .history-box::-webkit-scrollbar { width: 3px; }
+        .history-box::-webkit-scrollbar-thumb { background: var(--text-color); }
 
-        .controls {
-            display: flex;
-            justify-content: space-around;
-            width: 85%;
-            margin: 0 auto;
-        }
-
-        /* 操作ボタン：周りのインターフェースと同じ鮮やかな緑（ネオングリーン）に統一 */
+        .controls { display: flex; justify-content: space-around; width: 85%; margin: 0 auto; }
         .btn-touch {
-            width: 62px;
-            height: 62px;
-            font-size: 1.6rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 50%;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-            cursor: pointer;
-            transition: all 0.1s ease;
-
-            background: rgba(51, 255, 102, 0.15);
-            border: 2px solid var(--text-color);
-            color: var(--text-color);
-            text-shadow: 0 0 8px var(--text-color);
-            box-shadow: 0 0 12px rgba(51, 255, 102, 0.3);
+            width: 62px; height: 62px; font-size: 1.6rem; display: flex; justify-content: center; align-items: center;
+            border-radius: 50%; touch-action: manipulation; user-select: none; cursor: pointer; transition: all 0.1s ease;
+            background: rgba(0, 255, 242, 0.12); border: 2px solid var(--text-color); color: var(--text-color);
+            box-shadow: 0 0 12px rgba(0, 255, 242, 0.3);
         }
-        
-        /* ★触った（ホバー、クリック、タップしている間）ときに背景が緑に塗りつぶされ、矢印が黒になるスタイル */
         .btn-touch:hover, .btn-touch:active, .btn-touch.touch-active {
-            background: var(--text-color) !important;
-            color: #000 !important;
-            box-shadow: 0 0 25px var(--text-color) !important;
-            text-shadow: none !important;
+            background: var(--text-color) !important; color: #000 !important; box-shadow: 0 0 25px var(--text-color) !important;
         }
+
+        .curve-guide {
+            position: absolute;
+            top: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5; /* sits under the start/game-over overlays (z-index: 10) so it's hidden while they're shown */
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--text-color);
+            border-radius: 4px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.85rem;
+            color: var(--neon-yellow);
+            text-shadow: 0 0 6px var(--neon-yellow), 0 0 14px var(--accent-color);
+            pointer-events: none;
+            letter-spacing: 1px;
+        }
+        .curve-guide .s-tag { color: var(--accent-color); text-shadow: 0 0 6px var(--accent-color), 0 0 14px var(--neon-purple); }
     </style>
 </head>
 <body>
@@ -304,7 +253,11 @@
     </header>
 
     <div id="game-area">
-        <div id="road-display"></div>
+        <canvas id="game-canvas"></canvas>
+        <div id="curve-guide" class="curve-guide">
+            <span id="curve-arrow">→</span><span id="curve-s-tag" class="s-tag" style="display:none;">S</span>
+        </div>
+        <div id="boom-text">BOOM!!</div>
 
         <div id="start-overlay" class="overlay">
             <h2>CAR Road GAME</h2>
@@ -341,535 +294,624 @@
     </footer>
 
     <script>
-        // 画面最上部まで綺麗に隙間なく埋めるため、道路の行数を 28行 から 42行 へ拡張
-        const DISPLAY_ROWS = 42;     
-        const ROAD_TOTAL_WIDTH = 30; 
-
-        // アニメーションループ管理用（HTML5 requestAnimationFrame）
-        let isPlaying = false;
-        let lastTime = 0;
-        let accumTime = 0;
-        const stepTime = 33; // ゲームステップ処理は33ms周期
-
-        let score = 0;
-        let distance = 0;
-        let speed = 200; 
-        let level = 1;
-
-        // スムーズな慣性移動のための変数設計
-        let playerX = 15.0;
-        let playerVX = 0.0;     // 左右の現在の速度
-        const ACCEL = 0.06;     // キー/ボタン押下時の加速スピード
-        const DECEL = 0.12;     // キー/ボタンを離した時の減速（摩擦）スピード
-        const MAX_SPEED = 0.36; // 押し続けた時の最大速度（カーブを楽に曲がりきれる速度）
-
+        const DISPLAY_ROWS = 42;
+        const ROAD_TOTAL_WIDTH = 54;         // widened playfield so the road can start at ROAD_START_WIDTH with margin to spare
+        const ROAD_CENTER = ROAD_TOTAL_WIDTH / 2;
+        const GATE_INTERVAL = 100;           // distance milestone: was every 1000m -> now every 100m
+        const ROAD_START_WIDTH = 40;         // road width (world units) at game start: ~4x the old start width (10)
+        const ROAD_END_WIDTH = 10;           // final (narrowest) road width -- matches the ORIGINAL game-start width
+        const WIDTH_STEP_M = 500;            // the road narrows a notch every time distance crosses a multiple of this
+        const WIDTH_STEP_COUNT = 3;          // number of narrowing steps needed to go from ROAD_START_WIDTH to ROAD_END_WIDTH (500/1000/1500m)
+        const WIDTH_STEP_TRANSITION_M = 100; // each narrowing step eases in over this many meters so the road never "jumps" onto the car
+        const DIFFICULTY_START_M = 300;      // curves start getting sharper/more frequent from here (independent of road width now)
+        const DIFFICULTY_RAMP_M = 1300;      // distance over which curve difficulty reaches max
+        const EASY_CURVE_ZONE_M = 1000;      // up to this distance: only gentle, single-direction curves -- no S-curves allowed
+        const CAR_HALF_WIDTH = 0.9;          // car half-width in world units: drives BOTH the visual size and the hitbox
+        const TREE_SPACING = 5;              // place a roadside tree pair every N road rows
+        const MAX_DISPLAY_SPEED = 350;       // km/h shown on the HUD, capped here
+        const MAX_GAME_SPEED = 480;          // caps the internal speed variable; without this, level -> speed -> distance
+                                              // -> level feeds back on itself and explodes after a couple of minutes of play
+        let isPlaying = false, lastTime = 0, accumTime = 0, stepTime = 33;
+        let score = 0, bonusScore = 0, distance = 0, speed = 200, level = 1;
+        let playerX = ROAD_CENTER, playerVX = 0.0;
+        const ACCEL = 0.06, DECEL = 0.12, MAX_SPEED = 0.36;
         const keysPressed = { left: false, right: false };
-
-        let roadData = [];
-
-        let curveTheta = 0;      
-        let curveTargetAmp = 0;  
-        let currentAmp = 0;      
-        let segmentDuration = 0; 
-        let nextGateDistance = 1000; 
-
-        // 音声エンジン用（Web Audio API）
-        let audioCtx = null;
-        let engineOsc = null;
-        let engineFilter = null;
-        let engineGain = null;
-
-        // スコアデータ
+        let roadData = [], curveTheta = 0, curveTargetAmp = 0, currentAmp = 0, segmentDuration = 0, nextGateDistance = GATE_INTERVAL;
+        let lastCurveDir = 0, curveDisplayDir = 1, curveIsSNext = false; // curve look-ahead guide state
+        let dashScrollAcc = 0, treeTick = 0;
+        let audioCtx = null, engineOsc = null, engineOsc2 = null, engineFilter = null, engineGain = null;
         let hiScore = parseInt(localStorage.getItem('car_road_hi_score')) || 0;
         let scoreHistory = JSON.parse(localStorage.getItem('car_road_history')) || [];
+        let cachedAccentColor = '#ff2e92';
+
+        // ---- Visual (canvas) state ----
+        let showPlayer = true;
+        let lastPlayerScreen = { x: 0, y: 0 };
+        let stars = [];
+        let explosionParticles = [];
+        let canvasW = 0, canvasH = 0;
 
         const gameArea = document.getElementById('game-area');
-        const roadDisplay = document.getElementById('road-display');
-        const scoreEl = document.getElementById('score');
-        const levelEl = document.getElementById('level');
-        const distanceEl = document.getElementById('distance');
-        const speedEl = document.getElementById('speed');
-        const startOverlay = document.getElementById('start-overlay');
-        const gameoverOverlay = document.getElementById('gameover-overlay');
-        const finalScoreEl = document.getElementById('final-score');
-        const startBtn = document.getElementById('start-btn');
-        const retryBtn = document.getElementById('retry-btn');
-        const backBtn = document.getElementById('back-btn');
-        const btnLeft = document.getElementById('btn-left');
-        const btnRight = document.getElementById('btn-right');
-        
-        const hiScoreDisplay = document.getElementById('hi-score-display');
-        const historyDisplay = document.getElementById('history-display');
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false; // keep the pixel-art car crisp
+        const boomTextEl = document.getElementById('boom-text');
+        const scoreEl = document.getElementById('score'), levelEl = document.getElementById('level'), distanceEl = document.getElementById('distance'), speedEl = document.getElementById('speed');
+        const startOverlay = document.getElementById('start-overlay'), gameoverOverlay = document.getElementById('gameover-overlay'), finalScoreEl = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn'), retryBtn = document.getElementById('retry-btn'), backBtn = document.getElementById('back-btn');
+        const btnLeft = document.getElementById('btn-left'), btnRight = document.getElementById('btn-right');
+        const hiScoreDisplay = document.getElementById('hi-score-display'), historyDisplay = document.getElementById('history-display');
+        const curveArrowEl = document.getElementById('curve-arrow'), curveSTagEl = document.getElementById('curve-s-tag');
 
         function initGame() {
-            score = 0;
-            distance = 0;
-            speed = 200;
-            level = 1;
-            playerX = 15.0;
-            playerVX = 0.0;
-            roadData = [];
-            curveTheta = 0;
-            curveTargetAmp = 0;
-            currentAmp = 0;
-            segmentDuration = 0;
-            nextGateDistance = 1000;
-
-            for (let i = 0; i < DISPLAY_ROWS; i++) {
-                roadData.push({ left: 10, width: 10, center: 15, centerFloat: 15.0, msg: null });
-            }
-
-            loadAndRenderScoreBoard();
-            updateStatus();
-            render();
+            score = 0; bonusScore = 0; distance = 0; speed = 200; level = 1; playerX = ROAD_CENTER; playerVX = 0.0; roadData = [];
+            curveTheta = 0; curveTargetAmp = 0; currentAmp = 0; segmentDuration = 0; nextGateDistance = GATE_INTERVAL;
+            dashScrollAcc = 0; treeTick = 0;
+            lastCurveDir = 0; curveDisplayDir = 1; curveIsSNext = false;
+            for (let i = 0; i < DISPLAY_ROWS; i++) roadData.push({ left: (ROAD_TOTAL_WIDTH - ROAD_START_WIDTH) / 2, width: ROAD_START_WIDTH, center: ROAD_CENTER, centerFloat: ROAD_CENTER, msg: null, tree: false });
+            cachedAccentColor = '#ff2e92';
+            showPlayer = true; explosionParticles = [];
+            loadAndRenderScoreBoard(); updateStatus(); updateCurveIndicator(); resizeCanvas(); render();
         }
 
-        // Web Audio APIの初期化
+        // Road width (world units) at a given distance: starts at ROAD_START_WIDTH and narrows in
+        // steps every WIDTH_STEP_M meters until it reaches ROAD_END_WIDTH, then stays constant.
+        // Each step eases in over WIDTH_STEP_TRANSITION_M meters so the edges never jump onto the car.
+        function getRoadWidth(dist) {
+            const stepSize = (ROAD_START_WIDTH - ROAD_END_WIDTH) / WIDTH_STEP_COUNT;
+            const stepIndex = Math.min(WIDTH_STEP_COUNT, Math.floor(dist / WIDTH_STEP_M));
+            if (stepIndex >= WIDTH_STEP_COUNT) return ROAD_END_WIDTH;
+            const widthAtStepStart = ROAD_START_WIDTH - stepIndex * stepSize;
+            const distIntoStep = dist - stepIndex * WIDTH_STEP_M;
+            const transitionT = Math.max(0, Math.min(1, distIntoStep / WIDTH_STEP_TRANSITION_M));
+            return widthAtStepStart - transitionT * stepSize;
+        }
+
+        // Updates the on-screen "next curve" guide (arrow + optional S tag for an S-curve ahead).
+        function updateCurveIndicator() {
+            if (!curveArrowEl) return;
+            curveArrowEl.textContent = curveDisplayDir < 0 ? '←' : '→';
+            curveSTagEl.style.display = curveIsSNext ? 'inline' : 'none';
+        }
+
+        // ================= AUDIO =================
+
         function initAudio() {
-            if (audioCtx) return;
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) return;
-            audioCtx = new AudioContextClass();
-            
-            // エンジン低音用のフィルター
-            engineFilter = audioCtx.createBiquadFilter();
-            engineFilter.type = 'lowpass';
-            engineFilter.frequency.setValueAtTime(150, audioCtx.currentTime);
-            
-            // 音量調整用
-            engineGain = audioCtx.createGain();
-            engineGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-            
-            engineFilter.connect(engineGain);
-            engineGain.connect(audioCtx.destination);
+            if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume(); return; }
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            engineFilter = audioCtx.createBiquadFilter(); engineFilter.type = 'lowpass'; engineFilter.frequency.setValueAtTime(150, audioCtx.currentTime);
+            engineGain = audioCtx.createGain(); engineGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+            engineFilter.connect(engineGain); engineGain.connect(audioCtx.destination);
         }
 
-        // エンジン発振器の開始
         function startEngineSound() {
             if (!audioCtx) return;
             stopEngineSound();
-            
-            engineOsc = audioCtx.createOscillator();
-            engineOsc.type = 'sawtooth'; // 鋸歯状波
-            engineOsc.connect(engineFilter);
-            engineOsc.start(0);
-            
+            engineOsc = audioCtx.createOscillator(); engineOsc.type = 'sawtooth';
+            engineOsc2 = audioCtx.createOscillator(); engineOsc2.type = 'square'; engineOsc2.detune.setValueAtTime(-1200, audioCtx.currentTime);
+            engineOsc.connect(engineFilter); engineOsc2.connect(engineFilter);
+            engineOsc.start(0); engineOsc2.start(0);
             engineGain.gain.setTargetAtTime(0.12, audioCtx.currentTime, 0.1);
         }
 
-        // エンジン音の更新
         function updateEngineSound() {
             if (!audioCtx || !engineOsc || !isPlaying) return;
-            
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            
-            let baseFreq = 38 + (speed - 200) * 0.14; 
-            let jitter = Math.sin(Date.now() * 0.06) * 1.5; 
-            
-            engineOsc.frequency.setTargetAtTime(baseFreq + jitter, audioCtx.currentTime, 0.1);
-            
-            let filterFreq = 120 + (speed - 200) * 0.45;
-            engineFilter.frequency.setTargetAtTime(filterFreq, audioCtx.currentTime, 0.1);
+            let baseFreq = 38 + (speed - 200) * 0.14;
+            engineOsc.frequency.setTargetAtTime(baseFreq, audioCtx.currentTime, 0.1);
+            if (engineOsc2) engineOsc2.frequency.setTargetAtTime(baseFreq * 1.5, audioCtx.currentTime, 0.1);
         }
 
-        // エンジン音の停止
         function stopEngineSound() {
-            if (engineOsc) {
-                try {
-                    engineOsc.stop();
-                } catch(e) {}
-                engineOsc.disconnect();
-                engineOsc = null;
-            }
-            if (engineGain) {
-                engineGain.gain.setValueAtTime(0, audioCtx.currentTime);
-            }
+            if (engineOsc) { try { engineOsc.stop(); } catch(e) {} engineOsc.disconnect(); engineOsc = null; }
+            if (engineOsc2) { try { engineOsc2.stop(); } catch(e) {} engineOsc2.disconnect(); engineOsc2 = null; }
+            if (engineGain) engineGain.gain.setValueAtTime(0, audioCtx.currentTime);
         }
 
-        // 壁破壊時の爆発・クラッシュ音
-        function playCrashSound() {
+        // Beefed-up crash sound: low pitch-drop thump + filtered noise burst for a punchy retro "BOOM"
+        function playBoomSound() {
             if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const bufferSize = audioCtx.sampleRate * 0.5; 
+            const now = audioCtx.currentTime;
+
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(130, now);
+            osc.frequency.exponentialRampToValueAtTime(22, now + 0.5);
+            oscGain.gain.setValueAtTime(0.6, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            osc.connect(oscGain); oscGain.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + 0.5);
+
+            const bufferSize = Math.floor(audioCtx.sampleRate * 0.4);
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-            
-            const noiseNode = audioCtx.createBufferSource();
-            noiseNode.buffer = buffer;
-            
+            for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
             const noiseFilter = audioCtx.createBiquadFilter();
             noiseFilter.type = 'lowpass';
-            noiseFilter.frequency.setValueAtTime(280, audioCtx.currentTime);
-            noiseFilter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.45);
-            
+            noiseFilter.frequency.setValueAtTime(2200, now);
+            noiseFilter.frequency.exponentialRampToValueAtTime(90, now + 0.4);
             const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.35, audioCtx.currentTime);
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
-            
-            noiseNode.connect(noiseFilter);
-            noiseFilter.connect(noiseGain);
-            noiseGain.connect(audioCtx.destination);
-            
-            noiseNode.start();
+            noiseGain.gain.setValueAtTime(0.7, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(audioCtx.destination);
+            noise.start(now);
+        }
+
+        // Cheerful arcade chime when a distance gate is passed
+        function playGateSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            [880, 1108, 1318].forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                const t0 = now + idx * 0.07;
+                osc.frequency.setValueAtTime(freq, t0);
+                gain.gain.setValueAtTime(0.0001, t0);
+                gain.gain.linearRampToValueAtTime(0.25, t0 + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t0); osc.stop(t0 + 0.17);
+            });
+        }
+
+        // "Insert coin" style two-tone blip on game start
+        function playStartSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            [660, 990].forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                const t0 = now + idx * 0.09;
+                osc.frequency.setValueAtTime(freq, t0);
+                gain.gain.setValueAtTime(0.2, t0);
+                gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t0); osc.stop(t0 + 0.13);
+            });
         }
 
         function loadAndRenderScoreBoard() {
             hiScoreDisplay.textContent = hiScore;
-            
-            if (scoreHistory.length === 0) {
-                historyDisplay.innerHTML = "HISTORY (LAST10)<br>No games yet.";
-            } else {
-                let html = "HISTORY (LAST10)<br>";
-                scoreHistory.forEach((s, idx) => {
-                    html += `#${idx + 1}: ${s}m<br>`;
-                });
-                historyDisplay.innerHTML = html;
-            }
+            let html = "HISTORY (LAST10)<br>";
+            scoreHistory.forEach((s, idx) => { html += `#${idx + 1}: ${s}m<br>`; });
+            historyDisplay.innerHTML = scoreHistory.length === 0 ? "HISTORY (LAST10)<br>No games yet." : html;
         }
 
-        // マイルドな慣性によるスムーズな左右移動計算
         function updatePlayerPosition() {
             if (!isPlaying) return;
-
-            let targetDir = 0;
-            if (keysPressed.left) targetDir -= 1;
-            if (keysPressed.right) targetDir += 1;
-
+            let targetDir = (keysPressed.left ? -1 : 0) + (keysPressed.right ? 1 : 0);
             if (targetDir !== 0) {
-                // 指標方向に向けて加速
                 playerVX += targetDir * ACCEL;
-                if (Math.abs(playerVX) > MAX_SPEED) {
-                    playerVX = Math.sign(playerVX) * MAX_SPEED;
-                }
+                if (Math.abs(playerVX) > MAX_SPEED) playerVX = Math.sign(playerVX) * MAX_SPEED;
             } else {
-                // 入力なし時に摩擦でスムーズに減速
-                if (playerVX > 0) {
-                    playerVX = Math.max(0, playerVX - DECEL);
-                } else if (playerVX < 0) {
-                    playerVX = Math.min(0, playerVX + DECEL);
-                }
+                if (playerVX > 0) playerVX = Math.max(0, playerVX - DECEL);
+                else if (playerVX < 0) playerVX = Math.min(0, playerVX + DECEL);
             }
-
-            playerX += playerVX;
-
-            // 画面外はみ出し防止
-            if (playerX < 0.5) {
-                playerX = 0.5;
-                playerVX = 0.0;
-            }
-            if (playerX > ROAD_TOTAL_WIDTH - 1.5) {
-                playerX = ROAD_TOTAL_WIDTH - 1.5;
-                playerVX = 0.0;
-            }
+            playerX = Math.max(CAR_HALF_WIDTH, Math.min(ROAD_TOTAL_WIDTH - CAR_HALF_WIDTH, playerX + playerVX));
         }
 
-        // ゲームステップ処理
         function progressGameStep() {
             if (!isPlaying) return;
-
             distance += Math.floor(speed / 35);
-            score = distance;
+            level = Math.floor(distance / 350) + 1; speed = Math.min(MAX_GAME_SPEED, 200 + (level - 1) * 35);
 
-            if (score > hiScore) {
-                hiScore = score;
-                hiScoreDisplay.textContent = hiScore;
-            }
-
-            level = Math.floor(distance / 350) + 1;
-            speed = 200 + (level - 1) * 35; 
-            
-            let maxRoadWidth = Math.max(6, 10 - Math.floor(level / 3));
+            // --- Difficulty ramp: from 300m curves get sharper/more frequent (road width is handled separately below) ---
+            const difficultyT = Math.max(0, Math.min(1, (distance - DIFFICULTY_START_M) / DIFFICULTY_RAMP_M));
+            // --- Road width: starts ~4x wider and narrows in steps every 500m down to the original start width ---
+            const roadWidth = getRoadWidth(distance);
 
             if (segmentDuration <= 0) {
-                if (Math.random() < 0.75) {
-                    const limit = Math.min(9, 5 + Math.floor(level / 2.5));
-                    curveTargetAmp = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * (limit - 3));
-                    segmentDuration = 35 + Math.floor(Math.random() * 35); 
+                const inEasyZone = distance < EASY_CURVE_ZONE_M;
+                let newDir;
+                if (inEasyZone) {
+                    // First 1000m: gentle, single-direction curves only -- never reverse direction (no S-curves).
+                    if (lastCurveDir !== 0 && Math.random() < 0.6) newDir = lastCurveDir;          // keep curving the same way
+                    else if (Math.random() < 0.55) newDir = 0;                                     // or a straight stretch
+                    else newDir = lastCurveDir !== 0 ? lastCurveDir : (Math.random() > 0.5 ? 1 : -1);
+                    curveTargetAmp = newDir * (2 + Math.random() * 3);                              // mild amplitude, no difficulty boost
+                    segmentDuration = Math.floor(60 + Math.random() * 40);                          // long, easy-going segments
                 } else {
-                    curveTargetAmp = 0; 
-                    segmentDuration = 12 + Math.floor(Math.random() * 12); 
+                    const ampBoost = 1 + difficultyT * 0.9;      // sharper curves as difficulty rises
+                    curveTargetAmp = Math.random() < 0.75 ? (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 6) * ampBoost : 0;
+                    segmentDuration = Math.max(14, Math.floor((35 + Math.random() * 35) * (1 - difficultyT * 0.45))); // curves change more often
+                    newDir = curveTargetAmp > 0 ? 1 : (curveTargetAmp < 0 ? -1 : 0);
                 }
+                // --- Curve preview guide: flag an S-curve when the new direction reverses the previous one ---
+                curveIsSNext = (newDir !== 0 && lastCurveDir !== 0 && newDir !== lastCurveDir);
+                if (newDir !== 0) { lastCurveDir = newDir; curveDisplayDir = newDir; }
+                updateCurveIndicator();
             }
             segmentDuration--;
-
-            currentAmp += (curveTargetAmp - currentAmp) * 0.04; // 移行スピードを少し下げてマイルド化
-            
+            const lerpSpeed = 0.04 + difficultyT * 0.035; // snappier curve transitions at high difficulty
+            currentAmp += (curveTargetAmp - currentAmp) * lerpSpeed;
             curveTheta += 0.04;
-            let nextCenterFloat = 15.0 + currentAmp + (Math.sin(curveTheta) * (currentAmp === 0 ? 0 : 0.4));
 
-            // 道路の1ステップでの変化幅（急さ）を最大 0.13 文字分に厳しく制限して超マイルドな曲線にリファイン
-            const maxShiftPerStep = 0.13;
-            let lastRow = roadData[roadData.length - 1];
-            let lastCenterFloat = lastRow ? lastRow.centerFloat : 15.0;
-            
+            // keep the curve inside the playfield, leaving room for the current (now variable) road width
+            const maxAmp = ROAD_CENTER - roadWidth / 2 - 1;
+            if (currentAmp > maxAmp) currentAmp = maxAmp;
+            if (currentAmp < -maxAmp) currentAmp = -maxAmp;
+
+            let nextCenterFloat = ROAD_CENTER + currentAmp;
+            let lastCenterFloat = roadData[roadData.length - 1].centerFloat;
             let shift = nextCenterFloat - lastCenterFloat;
-            if (Math.abs(shift) > maxShiftPerStep) {
-                nextCenterFloat = lastCenterFloat + Math.sign(shift) * maxShiftPerStep;
-            }
+            const maxShift = 0.13 + difficultyT * 0.09;
+            if (Math.abs(shift) > maxShift) nextCenterFloat = lastCenterFloat + Math.sign(shift) * maxShift;
 
-            const currentWidth = maxRoadWidth;
-            let leftEdge = Math.round(nextCenterFloat - (currentWidth / 2));
-            
-            if (leftEdge < 1) {
-                leftEdge = 1;
-                nextCenterFloat = leftEdge + (currentWidth / 2);
-            }
-            if (leftEdge + currentWidth >= ROAD_TOTAL_WIDTH - 1) {
-                leftEdge = ROAD_TOTAL_WIDTH - 1 - currentWidth;
-                nextCenterFloat = leftEdge + (currentWidth / 2);
-            }
+            let leftEdge = Math.max(1, Math.min(ROAD_TOTAL_WIDTH - 1 - roadWidth, nextCenterFloat - roadWidth / 2));
 
-            let rowMessage = null;
-            if (distance >= nextGateDistance) {
-                rowMessage = `Run ${nextGateDistance}m`;
-                nextGateDistance += 1000;
-                speed += 25; 
-            }
+            const isGate = distance >= nextGateDistance;
+            const gateLabel = nextGateDistance;
+            if (isGate) { nextGateDistance += GATE_INTERVAL; bonusScore += 50; playGateSound(); }
 
-            roadData.push({ 
-                left: leftEdge, 
-                width: currentWidth, 
-                center: Math.round(nextCenterFloat),
-                centerFloat: nextCenterFloat,
-                msg: rowMessage
-            });
+            treeTick++;
+            const hasTree = (treeTick % TREE_SPACING === 0);
+
+            roadData.push({ left: leftEdge, width: roadWidth, centerFloat: nextCenterFloat, msg: isGate ? `Run ${gateLabel}m` : null, tree: hasTree });
             roadData.shift();
 
+            dashScrollAcc += speed / 200; // center-line scroll speed follows the current game speed
+            score = distance + bonusScore;
             updateStatus();
         }
 
-        // 壁との衝突チェック
         function checkCollision() {
             if (!isPlaying) return;
-            const playerRow = roadData[0]; 
-            if (!playerRow) return;
-            const rightEdge = playerRow.left + playerRow.width;
-            const pX = Math.round(playerX);
-
-            if (pX <= playerRow.left || pX >= rightEdge) {
-                gameOver();
-            }
+            const row = roadData[0];
+            // Crash only when the car's own body (not just its center point) actually crosses the road edge.
+            if (playerX - CAR_HALF_WIDTH < row.left || playerX + CAR_HALF_WIDTH > row.left + row.width) gameOver();
         }
 
-        // HTML5 requestAnimationFrame 対応のメインゲームループ
         function gameLoopRAF(timestamp) {
             if (!isPlaying) return;
-
             if (!lastTime) lastTime = timestamp;
             let deltaTime = timestamp - lastTime;
             lastTime = timestamp;
-
-            if (deltaTime > 100) deltaTime = 33;
-
             accumTime += deltaTime;
-
-            updatePlayerPosition();
-
+            // Cap the catch-up window (e.g. after the tab was backgrounded) to avoid a burst of ticks.
+            if (accumTime > stepTime * 10) accumTime = stepTime * 10;
+            // Steering AND game progression both run on this fixed-rate tick, not once per animation frame.
+            // This keeps gameplay speed identical on a 60Hz phone and a 120/144Hz PC monitor;
+            // only render() below scales with the display's actual refresh rate, which just adds smoothness.
             while (accumTime >= stepTime) {
+                updatePlayerPosition();
                 progressGameStep();
                 accumTime -= stepTime;
             }
-
             checkCollision();
-
-            if (isPlaying) {
-                render();
-                updateEngineSound();
-                requestAnimationFrame(gameLoopRAF);
-            }
+            if (isPlaying) { render(); updateEngineSound(); requestAnimationFrame(gameLoopRAF); }
         }
 
         function updateStatus() {
-            scoreEl.textContent = score;
-            levelEl.textContent = level;
-            distanceEl.textContent = distance;
-            
-            // ★ スピード感はそのままに、表示用のSPEED数値のみを「100km/hから徐々に上がり、320km/hがMAX（カンスト）」になるよう常識の範囲に設定 [1]
-            let displaySpeed = 100 + Math.floor(distance / 12);
-            if (displaySpeed > 320) displaySpeed = 320;
-            speedEl.textContent = displaySpeed;
+            scoreEl.textContent = score; levelEl.textContent = level; distanceEl.textContent = distance;
+            speedEl.textContent = Math.min(MAX_DISPLAY_SPEED, 100 + Math.floor(distance / 12));
+        }
+
+        // ================= CANVAS RENDERING (pseudo-3D synthwave road) =================
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 40; i++) {
+                stars.push({ x: Math.random(), y: Math.random() * 0.55, r: Math.random() * 1.4 + 0.3, a: Math.random() * 0.5 + 0.3 });
+            }
+        }
+
+        function resizeCanvas() {
+            const rect = gameArea.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvasW = Math.max(1, rect.width);
+            canvasH = Math.max(1, rect.height);
+            canvas.width = Math.round(canvasW * dpr);
+            canvas.height = Math.round(canvasH * dpr);
+            canvas.style.width = canvasW + 'px';
+            canvas.style.height = canvasH + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function drawSky(horizonY) {
+            const grad = ctx.createLinearGradient(0, 0, 0, horizonY);
+            grad.addColorStop(0, '#0a0420');
+            grad.addColorStop(1, '#3a1568');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvasW, horizonY);
+
+            // sun
+            const sunX = canvasW / 2, sunY = horizonY, sunR = canvasW * 0.24;
+            ctx.save();
+            ctx.beginPath(); ctx.rect(0, 0, canvasW, horizonY); ctx.clip();
+            const sunGrad = ctx.createLinearGradient(0, sunY - sunR, 0, sunY);
+            sunGrad.addColorStop(0, '#ffe45e');
+            sunGrad.addColorStop(0.55, '#ff8a3d');
+            sunGrad.addColorStop(1, '#ff2e92');
+            ctx.fillStyle = sunGrad;
+            ctx.beginPath(); ctx.arc(sunX, sunY, sunR, Math.PI, 0); ctx.fill();
+            ctx.strokeStyle = 'rgba(10,4,32,0.55)'; ctx.lineWidth = 3;
+            for (let i = 1; i <= 4; i++) {
+                const yy = sunY - sunR * 0.18 * i;
+                ctx.beginPath(); ctx.moveTo(sunX - sunR, yy); ctx.lineTo(sunX + sunR, yy); ctx.stroke();
+            }
+            ctx.restore();
+
+            // stars
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(s => {
+                ctx.globalAlpha = s.a;
+                ctx.beginPath(); ctx.arc(s.x * canvasW, s.y * horizonY, s.r, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // ground base (below horizon, behind road)
+            const groundGrad = ctx.createLinearGradient(0, horizonY, 0, canvasH);
+            groundGrad.addColorStop(0, '#160a30');
+            groundGrad.addColorStop(1, '#05010f');
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, horizonY, canvasW, canvasH - horizonY);
+        }
+
+        // 9x9 pixel-art car sprite (dot-matrix style). '.'=empty, B=body, D=shaded body, W=windshield, H=light
+        const CAR_SPRITE = [
+            "...BBB...",
+            "..BBBBB..",
+            ".BBWWWBB.",
+            ".BBWWWBB.",
+            ".BBBBBBB.",
+            ".BBBBBBB.",
+            ".BDBBBDB.",
+            "HHB...BHH",
+            ".H.....H."
+        ];
+
+        // halfWidthPx is the car's half-width in canvas pixels; sizing the sprite off this value
+        // keeps the drawn car exactly matching the CAR_HALF_WIDTH collision box used in checkCollision().
+        function drawCar(x, y, halfWidthPx) {
+            const cols = CAR_SPRITE[0].length, rows = CAR_SPRITE.length;
+            const px = (halfWidthPx * 2) / cols;
+            const totalH = rows * px;
+
+            ctx.save();
+            ctx.shadowColor = '#ff2e92'; ctx.shadowBlur = 16;
+            ctx.fillStyle = 'rgba(255,46,146,0.35)';
+            ctx.fillRect(x - halfWidthPx * 1.15, y - totalH * 1.1, halfWidthPx * 2.3, totalH * 1.15);
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(x - halfWidthPx, y - totalH);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const ch = CAR_SPRITE[r][c];
+                    if (ch === '.') continue;
+                    ctx.fillStyle = ch === 'B' ? '#ff2e92' : ch === 'D' ? '#a8125f' : ch === 'W' ? '#00fff2' : '#ffe45e';
+                    ctx.fillRect(Math.floor(c * px), Math.floor(r * px), Math.ceil(px + 0.6), Math.ceil(px + 0.6));
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawTree(x, y, scale, side) {
+            const trunkW = 3.5 * scale, trunkH = 7 * scale;
+            const foliageW = 15 * scale, foliageH = 15 * scale;
+            const rim = side === 'left' ? 'rgba(0,255,242,0.4)' : 'rgba(255,46,146,0.4)';
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = '#150b12';
+            ctx.fillRect(-trunkW / 2, -trunkH, trunkW, trunkH);
+            ctx.strokeStyle = rim; ctx.lineWidth = Math.max(1, scale);
+            ctx.fillStyle = '#0a1f15';
+            for (let t = 0; t < 3; t++) {
+                const w = foliageW * (1 - t * 0.22);
+                const baseY = -trunkH - t * foliageH * 0.38;
+                ctx.beginPath();
+                ctx.moveTo(0, baseY - foliageH * 0.5);
+                ctx.lineTo(w / 2, baseY);
+                ctx.lineTo(-w / 2, baseY);
+                ctx.closePath();
+                ctx.fill(); ctx.stroke();
+            }
+            ctx.restore();
         }
 
         function render() {
-            let displayHTML = "";
+            if (!canvasW || !canvasH) return;
+            ctx.clearRect(0, 0, canvasW, canvasH);
 
-            for (let i = DISPLAY_ROWS - 1; i >= 0; i--) {
+            const horizonY = canvasH * 0.14;
+            drawSky(horizonY);
+
+            const DEPTH = 22;
+            // Single, consistent world-unit -> pixel scale for offsets AND widths (this used to be two different
+            // magic numbers, which is why the drawn road edges didn't line up with where the crash actually triggered).
+            const pxPerUnit = canvasW / ROAD_TOTAL_WIDTH;
+            const projections = new Array(DISPLAY_ROWS);
+            for (let i = 0; i < DISPLAY_ROWS; i++) {
                 const row = roadData[i];
-                let lineArr = new Array(ROAD_TOTAL_WIDTH).fill(" ");
-
-                if (row.msg) {
-                    const text = `--- ${row.msg} ---`;
-                    let startPos = Math.max(0, Math.floor((ROAD_TOTAL_WIDTH - text.length) / 2));
-                    for(let charIdx=0; charIdx<text.length; charIdx++) {
-                        if(startPos + charIdx < ROAD_TOTAL_WIDTH) {
-                            lineArr[startPos + charIdx] = `<span style='color:#fff; background:${varAccentColor()}; font-weight:bold;'>${text[charIdx]}</span>`;
-                        }
-                    }
-                } else {
-                    lineArr[row.left] = "|";
-                    lineArr[row.left + row.width] = "|";
-
-                    if ((distance + i) % 2 === 0) {
-                        const mid = row.center;
-                        if (mid > row.left && mid < row.left + row.width) {
-                            lineArr[mid] = "<span style='color: rgba(51, 255, 102, 0.4);'>.</span>";
-                        }
-                    }
-                }
-
-                if (i === 0) {
-                    const pX = Math.round(playerX);
-                    if (pX >= 0 && pX < ROAD_TOTAL_WIDTH) {
-                        lineArr[pX] = "<span style='color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); font-weight:900;'>▲</span>";
-                    }
-                }
-
-                displayHTML += lineArr.join("") + "\n";
+                const t = i / (DISPLAY_ROWS - 1);
+                const d = 1 + t * DEPTH;
+                const y = horizonY + (canvasH - horizonY) / d;
+                const scale = 1 / d;
+                // Curve visibility: with plain linear perspective (scale) a curve's sideways offset shrinks so fast
+                // with distance that it's barely visible near the horizon, making the road look almost straight.
+                // Using a gentler falloff (cube root) for the offset ONLY keeps the bend clearly visible far away,
+                // while scale === offsetScale === 1 at the nearest row (t=0), so the row under the car -- the one
+                // checkCollision() actually uses -- still renders exactly as before.
+                const offsetScale = Math.cbrt(scale);
+                const centerOffset = (row.centerFloat - ROAD_CENTER) * pxPerUnit * offsetScale;
+                const centerX = canvasW / 2 + centerOffset;
+                const halfWidth = (row.width / 2) * pxPerUnit * scale;
+                projections[i] = { y, centerX, halfWidth, scale, row };
             }
 
-            roadDisplay.innerHTML = displayHTML;
+            // faint perspective ground grid
+            ctx.save();
+            for (let i = 0; i < DISPLAY_ROWS; i += 3) {
+                const p = projections[i];
+                ctx.globalAlpha = 0.45 * p.scale;
+                ctx.strokeStyle = 'rgba(0,255,242,0.25)';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(canvasW, p.y); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+                ctx.strokeStyle = 'rgba(255,46,146,0.12)';
+                ctx.beginPath(); ctx.moveTo(canvasW * f, canvasH); ctx.lineTo(canvasW / 2, horizonY); ctx.stroke();
+            });
+            ctx.restore();
+
+            const dashPhase = Math.floor(dashScrollAcc);
+
+            // road surface + roadside trees, drawn far -> near
+            for (let i = DISPLAY_ROWS - 1; i >= 1; i--) {
+                const far = projections[i], near = projections[i - 1];
+
+                ctx.beginPath();
+                ctx.moveTo(far.centerX - far.halfWidth, far.y);
+                ctx.lineTo(far.centerX + far.halfWidth, far.y);
+                ctx.lineTo(near.centerX + near.halfWidth, near.y);
+                ctx.lineTo(near.centerX - near.halfWidth, near.y);
+                ctx.closePath();
+                ctx.fillStyle = (i % 2 === 0) ? '#170a30' : '#1e0f3d';
+                ctx.fill();
+
+                const edgeColor = (i % 4 < 2) ? '#00fff2' : '#ff2e92';
+                ctx.strokeStyle = edgeColor;
+                ctx.lineWidth = Math.max(1, 2 * near.scale);
+                ctx.shadowColor = edgeColor; ctx.shadowBlur = 8 * near.scale;
+                ctx.beginPath(); ctx.moveTo(far.centerX - far.halfWidth, far.y); ctx.lineTo(near.centerX - near.halfWidth, near.y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(far.centerX + far.halfWidth, far.y); ctx.lineTo(near.centerX + near.halfWidth, near.y); ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                if ((i + dashPhase) % 4 < 2) {
+                    const dashHalfFar = 2 * far.scale, dashHalfNear = 2 * near.scale;
+                    ctx.fillStyle = '#ffe45e';
+                    ctx.beginPath();
+                    ctx.moveTo(far.centerX - dashHalfFar, far.y);
+                    ctx.lineTo(far.centerX + dashHalfFar, far.y);
+                    ctx.lineTo(near.centerX + dashHalfNear, near.y);
+                    ctx.lineTo(near.centerX - dashHalfNear, near.y);
+                    ctx.closePath(); ctx.fill();
+                }
+
+                if (far.row.tree) {
+                    drawTree(far.centerX - far.halfWidth - 16 * far.scale, far.y, far.scale, 'left');
+                    drawTree(far.centerX + far.halfWidth + 16 * far.scale, far.y, far.scale, 'right');
+                }
+
+                if (far.row.msg) {
+                    ctx.save();
+                    ctx.font = `${Math.max(9, 15 * far.scale)}px 'Press Start 2P', monospace`;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = '#ff2e92'; ctx.shadowBlur = 10;
+                    ctx.fillText(far.row.msg, far.centerX, far.y);
+                    ctx.restore();
+                }
+            }
+
+            if (showPlayer) {
+                const carX = canvasW / 2 + (playerX - ROAD_CENTER) * pxPerUnit;
+                const carHalfWidthPx = CAR_HALF_WIDTH * pxPerUnit;
+                const carY = canvasH - 10;
+                lastPlayerScreen.x = carX; lastPlayerScreen.y = carY;
+                drawCar(carX, carY, carHalfWidthPx);
+            }
         }
 
-        function varAccentColor() {
-            return getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim();
+        // ---- crash explosion ----
+        function triggerExplosion(x, y) {
+            explosionParticles = [];
+            const colors = ['#ff2e92', '#ffe45e', '#ff8a3d', '#ffffff', '#00fff2'];
+            for (let k = 0; k < 44; k++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 2 + Math.random() * 6;
+                explosionParticles.push({
+                    x, y,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 2,
+                    life: 1,
+                    color: colors[k % colors.length],
+                    size: 2 + Math.random() * 3
+                });
+            }
+            requestAnimationFrame(explosionLoop);
         }
+
+        function explosionLoop() {
+            render();
+            ctx.save();
+            explosionParticles.forEach(p => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 0.02;
+                ctx.globalAlpha = Math.max(p.life, 0);
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.restore();
+            explosionParticles = explosionParticles.filter(p => p.life > 0);
+            if (explosionParticles.length > 0) requestAnimationFrame(explosionLoop);
+        }
+
+        // ================= GAME FLOW =================
 
         function startGame() {
             if (isPlaying) return;
-            
-            initAudio();
-            startEngineSound();
-
-            isPlaying = true;
-            startOverlay.style.display = "none";
-            gameoverOverlay.style.display = "none";
-            startBtn.style.display = "none";
-            retryBtn.style.display = "none";
-            backBtn.style.display = "none";
-            
-            gameArea.classList.remove('crash-shake', 'crash-red');
-
-            initGame();
-            
-            lastTime = 0;
-            accumTime = 0;
-            requestAnimationFrame(gameLoopRAF);
+            initAudio(); playStartSound(); startEngineSound(); isPlaying = true;
+            startOverlay.style.display = "none"; gameoverOverlay.style.display = "none";
+            startBtn.style.display = "none"; retryBtn.style.display = "none"; backBtn.style.display = "none";
+            gameArea.classList.remove('crash-shake', 'crash-red', 'flash-red-animation');
+            boomTextEl.classList.remove('show');
+            initGame(); lastTime = 0; accumTime = 0; requestAnimationFrame(gameLoopRAF);
         }
 
         function gameOver() {
-            isPlaying = false;
-            
-            stopEngineSound();
-            playCrashSound();
+            isPlaying = false; stopEngineSound(); playBoomSound();
+            gameArea.classList.add('crash-shake', 'flash-red-animation');
 
-            gameArea.classList.add('crash-shake', 'crash-red');
-            setTimeout(() => {
-                gameArea.classList.remove('crash-shake');
-            }, 500);
+            showPlayer = false;
+            triggerExplosion(lastPlayerScreen.x, lastPlayerScreen.y);
+
+            boomTextEl.classList.remove('show');
+            void boomTextEl.offsetWidth; // restart animation
+            boomTextEl.classList.add('show');
+            setTimeout(() => boomTextEl.classList.remove('show'), 800);
 
             finalScoreEl.textContent = score;
-            
-            if (score >= hiScore) {
-                hiScore = score;
-                localStorage.setItem('car_road_hi_score', hiScore);
-            }
-            
-            scoreHistory.unshift(score);
-            if (scoreHistory.length > 10) {
-                scoreHistory.pop();
-            }
+            if (score >= hiScore) { hiScore = score; localStorage.setItem('car_road_hi_score', hiScore); }
+            scoreHistory.unshift(score); if (scoreHistory.length > 10) scoreHistory.pop();
             localStorage.setItem('car_road_history', JSON.stringify(scoreHistory));
-
             loadAndRenderScoreBoard();
 
-            gameoverOverlay.style.display = "flex";
-            startBtn.style.display = "none";
-            retryBtn.style.display = "inline-block"; 
-            backBtn.style.display = "inline-block"; 
+            setTimeout(() => {
+                gameoverOverlay.style.display = "flex";
+                retryBtn.style.display = "inline-block"; backBtn.style.display = "inline-block";
+            }, 550);
         }
 
         window.addEventListener('keydown', (e) => {
-            if (!isPlaying) {
-                if (e.code === "Space") startGame();
-                return;
-            }
-
-            if (e.key === "ArrowLeft" || e.key === "Left") {
-                keysPressed.left = true;
-            } else if (e.key === "ArrowRight" || e.key === "Right") {
-                keysPressed.right = true;
-            }
+            if (["Space", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+            if (!isPlaying && e.code === "Space") startGame();
+            if (e.code === "ArrowLeft") keysPressed.left = true;
+            if (e.code === "ArrowRight") keysPressed.right = true;
         });
-
         window.addEventListener('keyup', (e) => {
-            if (e.key === "ArrowLeft" || e.key === "Left") {
-                keysPressed.left = false;
-            } else if (e.key === "ArrowRight" || e.key === "Right") {
-                keysPressed.right = false;
-            }
+            if (e.code === "ArrowLeft") keysPressed.left = false;
+            if (e.code === "ArrowRight") keysPressed.right = false;
         });
 
-        // ★ モバイル等のタッチ操作・マウスクリック入力の統一制御（触れている間に色を変える処理をJavaScriptで完璧に連動） [2]
-        btnLeft.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); 
-            keysPressed.left = true; 
-            btnLeft.classList.add('touch-active'); // 緑塗りつぶしクラスを追加
-        });
-        btnLeft.addEventListener('touchend', (e) => { 
-            e.preventDefault(); 
-            keysPressed.left = false; 
-            btnLeft.classList.remove('touch-active'); // 解除
-        });
-        btnLeft.addEventListener('mousedown', () => { 
-            keysPressed.left = true; 
-            btnLeft.classList.add('touch-active');
-        });
-        btnLeft.addEventListener('mouseup', () => { 
-            keysPressed.left = false; 
-            btnLeft.classList.remove('touch-active');
-        });
-        btnLeft.addEventListener('mouseleave', () => { 
-            keysPressed.left = false; 
-            btnLeft.classList.remove('touch-active');
-        });
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed.left = true; btnLeft.classList.add('touch-active'); if (audioCtx) audioCtx.resume(); });
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed.left = false; btnLeft.classList.remove('touch-active'); });
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keysPressed.right = true; btnRight.classList.add('touch-active'); if (audioCtx) audioCtx.resume(); });
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); keysPressed.right = false; btnRight.classList.remove('touch-active'); });
+        startBtn.addEventListener('click', (e) => { e.target.blur(); startGame(); });
+        retryBtn.addEventListener('click', (e) => { e.target.blur(); startGame(); });
+        backBtn.addEventListener('click', (e) => { e.target.blur(); window.location.href = "index.html"; });
 
-        btnRight.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); 
-            keysPressed.right = true; 
-            btnRight.classList.add('touch-active'); // 緑塗りつぶしクラスを追加
-        });
-        btnRight.addEventListener('touchend', (e) => { 
-            e.preventDefault(); 
-            keysPressed.right = false; 
-            btnRight.classList.remove('touch-active'); // 解除
-        });
-        btnRight.addEventListener('mousedown', () => { 
-            keysPressed.right = true; 
-            btnRight.classList.add('touch-active');
-        });
-        btnRight.addEventListener('mouseup', () => { 
-            keysPressed.right = false; 
-            btnRight.classList.remove('touch-active');
-        });
-        btnRight.addEventListener('mouseleave', () => { 
-            keysPressed.right = false; 
-            btnRight.classList.remove('touch-active');
-        });
+        window.addEventListener('resize', () => { resizeCanvas(); render(); });
+        if (window.ResizeObserver) {
+            new ResizeObserver(() => { resizeCanvas(); render(); }).observe(gameArea);
+        }
 
-        startBtn.addEventListener('click', startGame);
-        retryBtn.addEventListener('click', startGame);
-        
-        // Backボタン押下時に index.html に遷移する処理
-        backBtn.addEventListener('click', () => {
-            window.location.href = "index.html";
-        });
-
+        initStars();
         initGame();
     </script>
 </body>
