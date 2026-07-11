@@ -93,7 +93,8 @@
         #game-area {
             position: relative;
             width: 100%;
-            max-width: 400px;
+            max-width: 300px;
+            max-height: 375px;
             flex-grow: 1;
             flex-shrink: 1;
             min-height: 200px;
@@ -312,7 +313,7 @@
         const COLOR_STAR = "rgba(255, 255, 255, 0.4)";
 
         // --- プレイヤー ---
-        const PLAYER_SPEED = 1.8;
+        const PLAYER_SPEED = 3.2;
         const PLAYER_HITBOX_BY_LEVEL = { 1: 12, 2: 18, 3: 24 }; // pItemsCollected別の当たり判定半径
         const SHOOT_COOLDOWN_MAX = 30;
         const INVINCIBILITY_DURATION = 60; // 被弾後の無敵時間（フレーム数）
