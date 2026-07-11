@@ -97,6 +97,82 @@
         .burger-btn.active span:nth-child(2) { opacity: 0; }
         .burger-btn.active span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); background-color: var(--neon-pink); }
 
+        /* ----------------------------------
+         * BGM ON/OFF ボタン
+         * ---------------------------------- */
+        .bgm-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid var(--neon-green);
+            background: rgba(0, 0, 0, 0.9);
+            box-shadow: 0 0 10px var(--neon-green);
+            z-index: 2000;
+            cursor: pointer;
+            padding: 0 14px;
+            font-family: inherit;
+            color: var(--neon-green);
+            font-size: 0.75rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        .bgm-btn:hover {
+            box-shadow: 0 0 20px var(--neon-pink);
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+        .bgm-btn:active {
+            transform: scale(0.95);
+        }
+        .bgm-btn .bgm-icon {
+            display: inline-flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 14px;
+        }
+        .bgm-btn .bgm-icon span {
+            display: block;
+            width: 3px;
+            background-color: currentColor;
+            box-shadow: 0 0 4px currentColor;
+        }
+        .bgm-btn.playing .bgm-icon span {
+            animation: bgmBar 0.9s ease-in-out infinite;
+        }
+        .bgm-btn.playing .bgm-icon span:nth-child(1) { height: 4px;  animation-delay: 0s; }
+        .bgm-btn.playing .bgm-icon span:nth-child(2) { height: 10px; animation-delay: 0.15s; }
+        .bgm-btn.playing .bgm-icon span:nth-child(3) { height: 6px;  animation-delay: 0.3s; }
+        .bgm-btn.playing .bgm-icon span:nth-child(4) { height: 13px; animation-delay: 0.45s; }
+        .bgm-btn:not(.playing) .bgm-icon span {
+            height: 4px;
+            opacity: 0.5;
+        }
+        @keyframes bgmBar {
+            0%, 100% { height: 3px; }
+            50% { height: 14px; }
+        }
+        .bgm-btn .bgm-label::after {
+            content: "OFF";
+        }
+        .bgm-btn.playing .bgm-label::after {
+            content: "ON";
+        }
+        @media (max-width: 600px) {
+            .bgm-btn {
+                top: 12px;
+                left: 12px;
+                height: 38px;
+                padding: 0 10px;
+                font-size: 0.65rem;
+            }
+        }
+
         .nav-menu {
             position: fixed;
             top: 0; right: -100%;
@@ -564,6 +640,11 @@
 </head>
 <body>
 
+    <button class="bgm-btn" id="bgmBtn" type="button" aria-pressed="false">
+        <span class="bgm-icon"><span></span><span></span><span></span><span></span></span>
+        <span>BGM－<span class="bgm-label"></span></span>
+    </button>
+
     <div class="burger-btn" id="burgerBtn">
         <span></span>
         <span></span>
@@ -956,6 +1037,232 @@ document.addEventListener('DOMContentLoaded', () => {
             homeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }
+});
+
+// ============================================================
+// ▼ ここから BGM（レトロ・チップチューン風）自動生成スクリプト ▼
+// 音源ファイルは一切使用せず、Web Audio API のオシレーター/ノイズのみで
+// 8bitゲーム風のBGM（メロディ・ベース・キック・ハイハット）をリアルタイム生成する。
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const bgmBtn = document.getElementById('bgmBtn');
+    if (!bgmBtn) return;
+
+    let audioCtx = null;
+    let masterGain = null;
+    let isPlaying = false;
+    let schedulerTimer = null;
+
+    const TEMPO = 140; // BPM
+    const STEP_DURATION = 60.0 / TEMPO / 4; // 16分音符の長さ（秒）
+    const LOOKAHEAD_MS = 25.0;
+    const SCHEDULE_AHEAD_TIME = 0.12;
+
+    let currentStep = 0;
+    let currentBar = 0;
+    let nextNoteTime = 0.0;
+
+    // レトロ・ゲーム風コード進行（Em - C - G - D）とアルペジオパターン
+    const PROGRESSION = [
+        { bass: 'E2', arp: ['E4', 'G4', 'B4', 'E5'] },
+        { bass: 'C2', arp: ['C4', 'E4', 'G4', 'C5'] },
+        { bass: 'G2', arp: ['G3', 'B3', 'D4', 'G4'] },
+        { bass: 'D2', arp: ['D4', 'F#4', 'A4', 'D5'] }
+    ];
+
+    // 音名 -> 周波数（A4 = 440Hz基準）
+    function noteFreq(note) {
+        const table = { C: -9, 'C#': -8, D: -7, 'D#': -6, E: -5, F: -4, 'F#': -3, G: -2, 'G#': -1, A: 0, 'A#': 1, B: 2 };
+        const m = note.match(/^([A-G]#?)(\d)$/);
+        if (!m) return 440;
+        const semitone = table[m[1]];
+        const octave = parseInt(m[2], 10);
+        const n = semitone + (octave - 4) * 12;
+        return 440 * Math.pow(2, n / 12);
+    }
+
+    function initAudio() {
+        if (!audioCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AC();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.18;
+            masterGain.connect(audioCtx.destination);
+        }
+    }
+
+    // 矩形波/三角波によるメロディ・ベース音（8bit風エンベロープ）
+    function playTone(freq, time, duration, type, vol) {
+        const osc = audioCtx.createOscillator();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.linearRampToValueAtTime(vol, time + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + duration + 0.02);
+    }
+
+    // ピッチダウンするサイン波によるレトロキック音
+    function playKick(time) {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(130, time);
+        osc.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0.5, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + 0.2);
+    }
+
+    // ホワイトノイズによるハイハット音
+    function playHat(time, vol) {
+        const bufferSize = Math.floor(audioCtx.sampleRate * 0.05);
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const hp = audioCtx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 6000;
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(vol, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        noise.connect(hp);
+        hp.connect(g);
+        g.connect(masterGain);
+        noise.start(time);
+        noise.stop(time + 0.06);
+    }
+
+    // 1ステップ（16分音符1つ分）のサウンドをスケジュールする
+    function scheduleStep(stepIndex, time) {
+        const chord = PROGRESSION[currentBar % PROGRESSION.length];
+
+        // メロディ：4音のアルペジオを1小節（16ステップ）に4回繰り返す
+        const noteIdx = stepIndex % 4;
+        playTone(noteFreq(chord.arp[noteIdx]), time, STEP_DURATION * 0.9, 'square', 0.1);
+
+        // ベース：小節の頭と半分で鳴らす
+        if (stepIndex === 0 || stepIndex === 8) {
+            playTone(noteFreq(chord.bass), time, STEP_DURATION * 2 * 0.85, 'triangle', 0.22);
+        }
+
+        // キック：4分音符ごと
+        if (stepIndex % 4 === 0) {
+            playKick(time);
+        }
+
+        // ハイハット：全ステップ（裏拍を少し強調）
+        playHat(time, stepIndex % 2 === 0 ? 0.05 : 0.08);
+    }
+
+    // ルックアヘッド方式のスケジューラー（正確なタイミングを保つ）
+    function scheduler() {
+        while (nextNoteTime < audioCtx.currentTime + SCHEDULE_AHEAD_TIME) {
+            scheduleStep(currentStep, nextNoteTime);
+            nextNoteTime += STEP_DURATION;
+            currentStep++;
+            if (currentStep === 16) {
+                currentStep = 0;
+                currentBar++;
+            }
+        }
+        schedulerTimer = setTimeout(scheduler, LOOKAHEAD_MS);
+    }
+
+    function startBGM() {
+        initAudio();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        currentStep = 0;
+        currentBar = 0;
+        nextNoteTime = audioCtx.currentTime + 0.05;
+        scheduler();
+        isPlaying = true;
+    }
+
+    function stopBGM() {
+        isPlaying = false;
+        clearTimeout(schedulerTimer);
+        if (masterGain && audioCtx) {
+            // ぷつっと切れないようにフェードアウトしてから停止
+            const now = audioCtx.currentTime;
+            masterGain.gain.cancelScheduledValues(now);
+            masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+            masterGain.gain.linearRampToValueAtTime(0.0001, now + 0.15);
+            setTimeout(() => {
+                if (masterGain) masterGain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            }, 200);
+        }
+    }
+
+    // ユーザーが「鳴らしたい」と思っているかどうかのフラグ（デフォルトON＝最初から鳴らす）
+    let userWantsPlaying = true;
+
+    // ページ読み込み直後に再生を試みる。ブラウザの自動再生ポリシーにより
+    // ユーザー操作前は音が出ない場合があるため、その場合は最初の操作で鳴らす。
+    function tryAutoStart() {
+        initAudio();
+        if (audioCtx.state === 'running') {
+            if (userWantsPlaying && !isPlaying) startBGM();
+        } else {
+            audioCtx.resume().then(() => {
+                if (userWantsPlaying && !isPlaying) startBGM();
+            }).catch(() => {});
+        }
+    }
+
+    // ボタンは最初からON（再生中）表示にしておく
+    bgmBtn.classList.add('playing');
+    bgmBtn.setAttribute('aria-pressed', 'true');
+    tryAutoStart();
+
+    // ブラウザに自動再生がブロックされた場合、ページ内で最初に行われた
+    // クリック／タップ／キー操作を合図に自動的に再生を開始する
+    const unlockAudioOnFirstInteraction = () => {
+        if (userWantsPlaying) {
+            tryAutoStart();
+        }
+    };
+    document.addEventListener('click', unlockAudioOnFirstInteraction, { once: true });
+    document.addEventListener('keydown', unlockAudioOnFirstInteraction, { once: true });
+    document.addEventListener('touchstart', unlockAudioOnFirstInteraction, { once: true });
+
+    // ボタン：ONのときに押すとOFFに、OFFのときに押すとONに
+    bgmBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            userWantsPlaying = false;
+            stopBGM();
+            bgmBtn.classList.remove('playing');
+            bgmBtn.setAttribute('aria-pressed', 'false');
+        } else {
+            userWantsPlaying = true;
+            tryAutoStart();
+            bgmBtn.classList.add('playing');
+            bgmBtn.setAttribute('aria-pressed', 'true');
+        }
+    });
+
+    // タブが非表示になったら再生を止め、意図しないバックグラウンド再生を防ぐ
+    // （ユーザーが明示的にOFFにしたわけではないので、userWantsPlayingは変更しない）
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && isPlaying) {
+            stopBGM();
+        } else if (!document.hidden && userWantsPlaying && !isPlaying) {
+            tryAutoStart();
+        }
+    });
 });
     </script>
 </body>
