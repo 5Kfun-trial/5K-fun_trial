@@ -575,54 +575,47 @@
 
             function ensureContext() {
                 if (audioCtx) return;
-                try {
-                    const AC = window.AudioContext || window.webkitAudioContext;
-                    if (!AC) return; // 非対応ブラウザでは無音のまま（ゲーム進行には影響なし）
-                    audioCtx = new AC();
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return; // 非対応ブラウザでは無音のまま（ゲーム進行には影響なし）
+                audioCtx = new AC();
 
-                    masterGain = audioCtx.createGain();
-                    masterGain.gain.value = 0;
-                    masterGain.connect(audioCtx.destination);
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0;
+                masterGain.connect(audioCtx.destination);
 
-                    sfxGain = audioCtx.createGain();
-                    sfxGain.gain.value = 0.5;
-                    sfxGain.connect(audioCtx.destination);
+                sfxGain = audioCtx.createGain();
+                sfxGain.gain.value = 0.5;
+                sfxGain.connect(audioCtx.destination);
 
-                    // --- スペース感を出すフィードバックディレイ（付点8分エコー） ---
-                    delayNode = audioCtx.createDelay(1.0);
-                    delayNode.delayTime.value = (60 / BPM) * 0.75;
-                    const feedback = audioCtx.createGain();
-                    feedback.gain.value = 0.38;
-                    const delayFilter = audioCtx.createBiquadFilter();
-                    delayFilter.type = "lowpass";
-                    delayFilter.frequency.value = 2200;
-                    delayNode.connect(delayFilter);
-                    delayFilter.connect(feedback);
-                    feedback.connect(delayNode);
-                    const delayOutGain = audioCtx.createGain();
-                    delayOutGain.gain.value = 0.3;
-                    delayNode.connect(delayOutGain);
-                    delayOutGain.connect(masterGain);
+                // --- スペース感を出すフィードバックディレイ（付点8分エコー） ---
+                delayNode = audioCtx.createDelay(1.0);
+                delayNode.delayTime.value = (60 / BPM) * 0.75;
+                const feedback = audioCtx.createGain();
+                feedback.gain.value = 0.38;
+                const delayFilter = audioCtx.createBiquadFilter();
+                delayFilter.type = "lowpass";
+                delayFilter.frequency.value = 2200;
+                delayNode.connect(delayFilter);
+                delayFilter.connect(feedback);
+                feedback.connect(delayNode);
+                const delayOutGain = audioCtx.createGain();
+                delayOutGain.gain.value = 0.3;
+                delayNode.connect(delayOutGain);
+                delayOutGain.connect(masterGain);
 
-                    // --- プロシージャル生成のリバーブ（広がりのある空間表現） ---
-                    reverbNode = audioCtx.createConvolver();
-                    reverbNode.buffer = createImpulseResponse(2.4, 3.0);
-                    const reverbOutGain = audioCtx.createGain();
-                    reverbOutGain.gain.value = 0.22;
-                    reverbNode.connect(reverbOutGain);
-                    reverbOutGain.connect(masterGain);
+                // --- プロシージャル生成のリバーブ（広がりのある空間表現） ---
+                reverbNode = audioCtx.createConvolver();
+                reverbNode.buffer = createImpulseResponse(2.4, 3.0);
+                const reverbOutGain = audioCtx.createGain();
+                reverbOutGain.gain.value = 0.22;
+                reverbNode.connect(reverbOutGain);
+                reverbOutGain.connect(masterGain);
 
-                    // --- ハイハット用ノイズバッファ ---
-                    const noiseLen = Math.floor(audioCtx.sampleRate * 0.2);
-                    noiseBuffer = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
-                    const data = noiseBuffer.getChannelData(0);
-                    for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1;
-                } catch (e) {
-                    // 端末・ブラウザ固有の理由でWeb Audio初期化に失敗しても、
-                    // ゲーム本体は無音のまま問題なく進行できるようにする
-                    console.warn('BGM: audio init failed, continuing without sound.', e);
-                    audioCtx = null;
-                }
+                // --- ハイハット用ノイズバッファ ---
+                const noiseLen = Math.floor(audioCtx.sampleRate * 0.2);
+                noiseBuffer = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1;
             }
 
             function playKick(time) {
@@ -1031,27 +1024,12 @@
                 osc.stop(now + 0.07);
             }
 
-            const api = {
+            return {
                 start, stop, pause, resume,
                 playExplosion, playShot, playPowerUp, playPowerDown,
                 playPlayerDown, playItemGet, playEscapePenalty,
                 playHighScoreFanfare, playUIClick
             };
-
-            // 音まわりで何か例外が起きても、発射・撃破・被弾などの
-            // ゲーム進行ロジックを絶対に巻き込んで止めないようにする安全策
-            Object.keys(api).forEach(key => {
-                const original = api[key];
-                api[key] = function (...args) {
-                    try {
-                        return original.apply(this, args);
-                    } catch (e) {
-                        console.warn(`BGM.${key} failed:`, e);
-                    }
-                };
-            });
-
-            return api;
         })();
 
 
@@ -1076,83 +1054,6 @@
             }
         }
 
-
-        /*****************************************************************
-         * ボス戦フレームワーク
-         *
-         * ボスごとのロジックは別ファイル（boss1.js, boss2.js...）に分離する。
-         * 各ファイルは <script src="bossN.js"></script> として、この
-         * <script>タグより「後」に読み込むこと。classic scriptはページ内で
-         * グローバルスコープを共有するため、bossN.js側からは playerX や
-         * bullets、enemyBullets、ctx、score、BGM などをそのまま参照できる
-         * （postMessageなどの受け渡しは不要）。
-         *
-         * bossN.js側の実装例：
-         *   registerBoss('boss1', {
-         *       maxHp: 40,
-         *       rewardScore: 1000,
-         *       init()  { ... 初期位置などをthisにセット ... },
-         *       update(){ ... 移動・攻撃・被弾判定 ... },
-         *       render(ctx) { ... 描画 ... }
-         *   });
-         *****************************************************************/
-        const BossRegistry = {};
-        function registerBoss(id, def) {
-            BossRegistry[id] = def;
-        }
-
-        // スコア到達でボスを出現させるスケジュール。
-        // 新しいボスを追加する時は bossN.js を作って <script>タグを追加し、
-        // ここに { score: 到達点, id: 'bossN' } を1行足すだけでよい。
-        const BOSS_SCHEDULE = [
-            { score: 2000, id: 'boss1' }
-        ];
-        const triggeredBossScores = new Set();
-
-        let currentBoss = null;  // 現在戦闘中のボスのインスタンス（登録定義のコピー）
-        let inBossFight = false;
-
-        function checkBossTrigger() {
-            if (inBossFight) return;
-            for (const entry of BOSS_SCHEDULE) {
-                if (score >= entry.score && !triggeredBossScores.has(entry.score)) {
-                    triggeredBossScores.add(entry.score);
-                    startBossFight(entry.id);
-                    break;
-                }
-            }
-        }
-
-        function startBossFight(id) {
-            const def = BossRegistry[id];
-            if (!def) {
-                console.warn(`ボス "${id}" が登録されていません（bossファイルの<script>読み込み忘れ？）`);
-                return;
-            }
-            inBossFight = true;
-            enemies = [];        // 雑魚敵を片付けてからボス開始
-            enemyBullets = [];
-
-            currentBoss = Object.create(def);
-            currentBoss.hp = currentBoss.maxHp;
-            if (typeof currentBoss.init === "function") currentBoss.init();
-
-            scoreEffects.push({
-                x: V_WIDTH / 2, y: V_HEIGHT / 2,
-                text: currentBoss.name ? `WARNING: ${currentBoss.name}` : "WARNING: BOSS",
-                color: COLOR_ACCENT, size: 14, life: 90
-            });
-        }
-
-        function endBossFight(victory) {
-            if (victory && currentBoss) {
-                score += currentBoss.rewardScore || 0;
-                BGM.playHighScoreFanfare();
-            }
-            currentBoss = null;
-            inBossFight = false;
-        }
-
         function initGame() {
             score = 0;
             playerX = V_WIDTH / 2;
@@ -1169,9 +1070,6 @@
             invincibilityTimer = 0; // 無敵時間リセット
             isPaused = false;
             newRecordThisRun = false;
-            currentBoss = null;
-            inBossFight = false;
-            triggeredBossScores.clear();
             pauseOverlay.style.display = "none";
             stopBtn.textContent = "STOP";
 
@@ -1709,14 +1607,6 @@
             renderEffects();
             renderPlayer();
 
-            if (inBossFight && currentBoss && typeof currentBoss.render === "function") {
-                try {
-                    currentBoss.render(ctx);
-                } catch (e) {
-                    console.warn('Boss render failed:', e);
-                }
-            }
-
             ctx.shadowBlur = 0;
         }
 
@@ -1812,21 +1702,8 @@
             updatePlayerMovement();
             updateInvincibility();
             updatePlayerShooting();
-
-            checkBossTrigger();
-            if (inBossFight) {
-                if (currentBoss && typeof currentBoss.update === "function") {
-                    try {
-                        currentBoss.update();
-                    } catch (e) {
-                        console.warn('Boss update failed, ending boss fight safely:', e);
-                        endBossFight(false);
-                    }
-                }
-            } else {
-                updateEnemySpawning();
-                updateEnemyShooting();
-            }
+            updateEnemySpawning();
+            updateEnemyShooting();
 
             updateEntityPositions();
             updateScoreEffects();
@@ -1862,6 +1739,7 @@
         function startGame() {
             if (isPlaying) return;
             isPlaying = true;
+            BGM.playUIClick();
             startOverlay.style.display = "none";
             gameoverOverlay.style.display = "none";
             startBtn.style.display = "none";
@@ -1869,7 +1747,6 @@
             backBtn.style.display = "none";
             stopBtn.style.display = "inline-block";
             initGame();
-            BGM.playUIClick();
             BGM.start();
             gameLoop();
         }
@@ -2006,52 +1883,7 @@
 
         resizeCanvas();
         initGame();
-
-        /*****************************************************************
-         * ボス拡張用の公開API
-         *
-         * このゲーム全体は (function(){ ... })(); というIIFEの中に
-         * 閉じているため、外部の boss1.js のようなファイルからは
-         * playerX などの変数へ直接アクセスできない。
-         * そこで、ボス側が必要とする最小限の窓口だけを window.Game として
-         * 公開する。get で定義しているものは「呼ばれた瞬間の最新値」を
-         * 返すので、bullets配列が後で丸ごと差し替えられても安全に追随する。
-         *****************************************************************/
-        window.Game = {
-            get ctx() { return ctx; },
-            get playerX() { return playerX; },
-            get PLAYER_Y() { return PLAYER_Y; },
-            get V_WIDTH() { return V_WIDTH; },
-            get V_HEIGHT() { return V_HEIGHT; },
-            get score() { return score; },
-            get invincibilityTimer() { return invincibilityTimer; },
-            get bullets() { return bullets; },           // 自機弾（配列参照。読むだけ・destroy目的でy等を書き換えるのはOK）
-            get enemyBullets() { return enemyBullets; }, // 敵弾（push('x,y,speed')すれば既存の描画・自機当たり判定にそのまま乗る）
-            getPlayerHitboxRadius,
-            checkPlayerHit,
-            endBossFight,
-            addScoreEffect(x, y, text, color, size, life) {
-                scoreEffects.push({
-                    x, y, text,
-                    color: color || COLOR_ACCENT,
-                    size: size || 12,
-                    life: life || SCORE_EFFECT_LIFE_KILL
-                });
-            },
-            BGM
-        };
-        window.registerBoss = registerBoss;
     })();
     </script>
-
-    <!--
-        ボス戦は別ファイルに分離する構成。
-        新しいボスを追加する時は、
-          1) bossN.js を用意して registerBoss('bossN', {...}) を書く
-          2) 下に <script src="bossN.js"></script> を1行追加する
-          3) メインscript内の BOSS_SCHEDULE に { score: 到達点, id: 'bossN' } を追加する
-        の3ステップだけでよい（メインのゲーム本体には手を入れない）。
-    -->
-    <script src="boss1.js"></script>
 </body>
 </html>
