@@ -1,7 +1,8 @@
 /*****************************************************************
  * boss1.js
  *
- * スコア500点で出現する最初のボス「ガーディアン」。
+ * スコア5000点で出現する最初のボス「ガーディアン」。
+ * 見た目は多段ASCIIアート（UFO/艦艇風）。
  *
  * 【重要】このファイルはメインゲームのIIFEの「外側」（グローバルスコープ）
  * で実行される。そのためプレイヤー座標や弾配列などゲーム内部の状態には
@@ -33,7 +34,7 @@ registerBoss('boss1', {
     // ボス戦開始時に1回だけ呼ばれる
     init() {
         this.x = Game.V_WIDTH / 2;
-        this.y = 60;
+        this.y = 90;         // 多段ASCIIアートになったため、旧デザインより少し下げて全体が画面内に収まるようにする
         this.vx = 1.4;      // 左右移動速度
         this.shootTimer = 60;
         this.hitFlash = 0;  // 被弾時に一瞬白く光らせるためのカウンタ
@@ -52,8 +53,8 @@ registerBoss('boss1', {
         this.shootTimer--;
         if (this.shootTimer <= 0) {
             this.shootTimer = 55;
-            Game.enemyBullets.push({ x: this.x - 18, y: this.y + 20, speed: 2.6 });
-            Game.enemyBullets.push({ x: this.x + 18, y: this.y + 20, speed: 2.6 });
+            Game.enemyBullets.push({ x: this.x - 18, y: this.y + 60, speed: 2.6 });
+            Game.enemyBullets.push({ x: this.x + 18, y: this.y + 60, speed: 2.6 });
         }
 
         // --- 自機弾との当たり判定 ---
@@ -61,13 +62,13 @@ registerBoss('boss1', {
         for (let i = 0; i < bullets.length; i++) {
             const b = bullets[i];
             if (b.y < -10) continue; // 既に消費済み／画面外
-            if (Math.hypot(b.x - this.x, b.y - this.y) < 26) {
+            if (Math.hypot(b.x - this.x, b.y - (this.y + 30)) < 34) {
                 this.hp -= b.dmg;
                 b.y = -9999; // 弾を消費（後段の掃除処理で自動的に配列から除去される）
                 this.hitFlash = 6;
 
                 if (this.hp <= 0) {
-                    Game.addScoreEffect(this.x, this.y, `+${this.rewardScore}`, '#ffe066', 14, 90);
+                    Game.addScoreEffect(this.x, this.y + 30, `+${this.rewardScore}`, '#ffe066', 14, 90);
                     Game.endBossFight(true); // 勝利：報酬スコア加算＋ファンファーレはメイン側が処理
                     return;
                 }
@@ -79,13 +80,28 @@ registerBoss('boss1', {
 
     // 毎フレーム、自機やアイテムより手前に描画される
     render(ctx) {
+        // ユーザー指定デザイン：
+        //  ▲　▲
+        // ▼■●★●■▼
+        //  Ｉ■■■Ｉ
+        //    ■■
+        //     ▼
+        //     Ｉ
+        // 各行は textAlign="center" で this.x を中心に描画するため、
+        // 行ごとの前後の空白は無視して構わない（中央揃えが自動で効く）。
+        const rows = ["▲　▲", "▼■●★●■▼", "Ｉ■■■Ｉ", "■■", "▼", "Ｉ"];
+        const lineHeight = 26;
+
         ctx.save();
         ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillStyle = this.hitFlash > 0 ? "#ffffff" : "#ff2255";
         ctx.shadowColor = "#ff2255";
         ctx.shadowBlur = 12;
-        ctx.font = "bold 46px Courier New";
-        ctx.fillText("◈", this.x, this.y + 16);
+        ctx.font = "bold 28px Courier New";
+        rows.forEach((line, i) => {
+            ctx.fillText(line, this.x, this.y + i * lineHeight);
+        });
         ctx.restore();
 
         // HPバー（画面上部中央）
