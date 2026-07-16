@@ -575,47 +575,54 @@
 
             function ensureContext() {
                 if (audioCtx) return;
-                const AC = window.AudioContext || window.webkitAudioContext;
-                if (!AC) return; // 非対応ブラウザでは無音のまま（ゲーム進行には影響なし）
-                audioCtx = new AC();
+                try {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (!AC) return; // 非対応ブラウザでは無音のまま（ゲーム進行には影響なし）
+                    audioCtx = new AC();
 
-                masterGain = audioCtx.createGain();
-                masterGain.gain.value = 0;
-                masterGain.connect(audioCtx.destination);
+                    masterGain = audioCtx.createGain();
+                    masterGain.gain.value = 0;
+                    masterGain.connect(audioCtx.destination);
 
-                sfxGain = audioCtx.createGain();
-                sfxGain.gain.value = 0.5;
-                sfxGain.connect(audioCtx.destination);
+                    sfxGain = audioCtx.createGain();
+                    sfxGain.gain.value = 0.5;
+                    sfxGain.connect(audioCtx.destination);
 
-                // --- スペース感を出すフィードバックディレイ（付点8分エコー） ---
-                delayNode = audioCtx.createDelay(1.0);
-                delayNode.delayTime.value = (60 / BPM) * 0.75;
-                const feedback = audioCtx.createGain();
-                feedback.gain.value = 0.38;
-                const delayFilter = audioCtx.createBiquadFilter();
-                delayFilter.type = "lowpass";
-                delayFilter.frequency.value = 2200;
-                delayNode.connect(delayFilter);
-                delayFilter.connect(feedback);
-                feedback.connect(delayNode);
-                const delayOutGain = audioCtx.createGain();
-                delayOutGain.gain.value = 0.3;
-                delayNode.connect(delayOutGain);
-                delayOutGain.connect(masterGain);
+                    // --- スペース感を出すフィードバックディレイ（付点8分エコー） ---
+                    delayNode = audioCtx.createDelay(1.0);
+                    delayNode.delayTime.value = (60 / BPM) * 0.75;
+                    const feedback = audioCtx.createGain();
+                    feedback.gain.value = 0.38;
+                    const delayFilter = audioCtx.createBiquadFilter();
+                    delayFilter.type = "lowpass";
+                    delayFilter.frequency.value = 2200;
+                    delayNode.connect(delayFilter);
+                    delayFilter.connect(feedback);
+                    feedback.connect(delayNode);
+                    const delayOutGain = audioCtx.createGain();
+                    delayOutGain.gain.value = 0.3;
+                    delayNode.connect(delayOutGain);
+                    delayOutGain.connect(masterGain);
 
-                // --- プロシージャル生成のリバーブ（広がりのある空間表現） ---
-                reverbNode = audioCtx.createConvolver();
-                reverbNode.buffer = createImpulseResponse(2.4, 3.0);
-                const reverbOutGain = audioCtx.createGain();
-                reverbOutGain.gain.value = 0.22;
-                reverbNode.connect(reverbOutGain);
-                reverbOutGain.connect(masterGain);
+                    // --- プロシージャル生成のリバーブ（広がりのある空間表現） ---
+                    reverbNode = audioCtx.createConvolver();
+                    reverbNode.buffer = createImpulseResponse(2.4, 3.0);
+                    const reverbOutGain = audioCtx.createGain();
+                    reverbOutGain.gain.value = 0.22;
+                    reverbNode.connect(reverbOutGain);
+                    reverbOutGain.connect(masterGain);
 
-                // --- ハイハット用ノイズバッファ ---
-                const noiseLen = Math.floor(audioCtx.sampleRate * 0.2);
-                noiseBuffer = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
-                const data = noiseBuffer.getChannelData(0);
-                for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1;
+                    // --- ハイハット用ノイズバッファ ---
+                    const noiseLen = Math.floor(audioCtx.sampleRate * 0.2);
+                    noiseBuffer = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
+                    const data = noiseBuffer.getChannelData(0);
+                    for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1;
+                } catch (e) {
+                    // 端末・ブラウザ固有の理由でWeb Audio初期化に失敗しても、
+                    // ゲーム本体は無音のまま問題なく進行できるようにする
+                    console.warn('BGM: audio init failed, continuing without sound.', e);
+                    audioCtx = null;
+                }
             }
 
             function playKick(time) {
@@ -1024,12 +1031,27 @@
                 osc.stop(now + 0.07);
             }
 
-            return {
+            const api = {
                 start, stop, pause, resume,
                 playExplosion, playShot, playPowerUp, playPowerDown,
                 playPlayerDown, playItemGet, playEscapePenalty,
                 playHighScoreFanfare, playUIClick
             };
+
+            // 音まわりで何か例外が起きても、発射・撃破・被弾などの
+            // ゲーム進行ロジックを絶対に巻き込んで止めないようにする安全策
+            Object.keys(api).forEach(key => {
+                const original = api[key];
+                api[key] = function (...args) {
+                    try {
+                        return original.apply(this, args);
+                    } catch (e) {
+                        console.warn(`BGM.${key} failed:`, e);
+                    }
+                };
+            });
+
+            return api;
         })();
 
 
@@ -1054,6 +1076,87 @@
             }
         }
 
+
+        /*****************************************************************
+         * ボス戦フレームワーク
+         *
+         * ボスごとのロジックは、このファイル内の別のscriptブロック
+         * （bodyの末尾）に分けて記述している。ボス側のコードは
+         * このIIFEの「外側」（グローバルスコープ）で実行されるため、
+         * 直接ここの変数へはアクセスできない。そこで、ボス側が必要とする
+         * 最小限の窓口だけを window.Game として公開している（後述）。
+         *
+         * ボス定義側の実装例：
+         *   registerBoss('boss1', {
+         *       maxHp: 40,
+         *       rewardScore: 1000,
+         *       init()  { ... 初期位置などをthisにセット ... },
+         *       update(){ ... 移動・攻撃・被弾判定 ... },
+         *       render(ctx) { ... 描画 ... }
+         *   });
+         *****************************************************************/
+        const BossRegistry = {};
+        function registerBoss(id, def) {
+            BossRegistry[id] = def;
+        }
+
+        // スコア到達でボスを出現させるスケジュール。
+        // 新しいボスを追加する時は、body末尾のボス定義scriptブロックに
+        // registerBoss('bossN', {...}) を追記し、ここに
+        // { score: 到達点, id: 'bossN' } を1行足すだけでよい。
+        const BOSS_SCHEDULE = [
+            { score: 500, id: 'boss1' },
+            { score: 1000, id: 'boss2' },
+            { score: 2000, id: 'boss3' },
+            { score: 4000, id: 'boss4' },
+            { score: 6000, id: 'boss5' }
+        ];
+        const triggeredBossScores = new Set();
+
+        let currentBoss = null;  // 現在戦闘中のボスのインスタンス（登録定義のコピー）
+        let inBossFight = false;
+
+        function checkBossTrigger() {
+            if (inBossFight) return;
+            for (const entry of BOSS_SCHEDULE) {
+                if (score >= entry.score && !triggeredBossScores.has(entry.score)) {
+                    triggeredBossScores.add(entry.score);
+                    startBossFight(entry.id);
+                    break;
+                }
+            }
+        }
+
+        function startBossFight(id) {
+            const def = BossRegistry[id];
+            if (!def) {
+                console.warn(`ボス "${id}" が登録されていません（registerBossの呼び出し忘れ？）`);
+                return;
+            }
+            inBossFight = true;
+            enemies = [];        // 雑魚敵を片付けてからボス開始
+            enemyBullets = [];
+
+            currentBoss = Object.create(def);
+            currentBoss.hp = currentBoss.maxHp;
+            if (typeof currentBoss.init === "function") currentBoss.init();
+
+            scoreEffects.push({
+                x: V_WIDTH / 2, y: V_HEIGHT / 2,
+                text: currentBoss.name ? `WARNING: ${currentBoss.name}` : "WARNING: BOSS",
+                color: COLOR_ACCENT, size: 14, life: 90
+            });
+        }
+
+        function endBossFight(victory) {
+            if (victory && currentBoss) {
+                score += currentBoss.rewardScore || 0;
+                BGM.playHighScoreFanfare();
+            }
+            currentBoss = null;
+            inBossFight = false;
+        }
+
         function initGame() {
             score = 0;
             playerX = V_WIDTH / 2;
@@ -1070,6 +1173,9 @@
             invincibilityTimer = 0; // 無敵時間リセット
             isPaused = false;
             newRecordThisRun = false;
+            currentBoss = null;
+            inBossFight = false;
+            triggeredBossScores.clear();
             pauseOverlay.style.display = "none";
             stopBtn.textContent = "STOP";
 
@@ -1607,6 +1713,14 @@
             renderEffects();
             renderPlayer();
 
+            if (inBossFight && currentBoss && typeof currentBoss.render === "function") {
+                try {
+                    currentBoss.render(ctx);
+                } catch (e) {
+                    console.warn('Boss render failed:', e);
+                }
+            }
+
             ctx.shadowBlur = 0;
         }
 
@@ -1702,8 +1816,21 @@
             updatePlayerMovement();
             updateInvincibility();
             updatePlayerShooting();
-            updateEnemySpawning();
-            updateEnemyShooting();
+
+            checkBossTrigger();
+            if (inBossFight) {
+                if (currentBoss && typeof currentBoss.update === "function") {
+                    try {
+                        currentBoss.update();
+                    } catch (e) {
+                        console.warn('Boss update failed, ending boss fight safely:', e);
+                        endBossFight(false);
+                    }
+                }
+            } else {
+                updateEnemySpawning();
+                updateEnemyShooting();
+            }
 
             updateEntityPositions();
             updateScoreEffects();
@@ -1739,7 +1866,6 @@
         function startGame() {
             if (isPlaying) return;
             isPlaying = true;
-            BGM.playUIClick();
             startOverlay.style.display = "none";
             gameoverOverlay.style.display = "none";
             startBtn.style.display = "none";
@@ -1747,6 +1873,7 @@
             backBtn.style.display = "none";
             stopBtn.style.display = "inline-block";
             initGame();
+            BGM.playUIClick();
             BGM.start();
             gameLoop();
         }
@@ -1883,7 +2010,645 @@
 
         resizeCanvas();
         initGame();
+
+        /*****************************************************************
+         * ボス拡張用の公開API
+         *
+         * このゲーム全体は (function(){ ... })(); というIIFEの中に
+         * 閉じているため、外部の boss1.js のようなファイルからは
+         * playerX などの変数へ直接アクセスできない。
+         * そこで、ボス側が必要とする最小限の窓口だけを window.Game として
+         * 公開する。get で定義しているものは「呼ばれた瞬間の最新値」を
+         * 返すので、bullets配列が後で丸ごと差し替えられても安全に追随する。
+         *****************************************************************/
+        window.Game = {
+            get ctx() { return ctx; },
+            get playerX() { return playerX; },
+            get PLAYER_Y() { return PLAYER_Y; },
+            get V_WIDTH() { return V_WIDTH; },
+            get V_HEIGHT() { return V_HEIGHT; },
+            get score() { return score; },
+            get invincibilityTimer() { return invincibilityTimer; },
+            get bullets() { return bullets; },           // 自機弾（配列参照。読むだけ・destroy目的でy等を書き換えるのはOK）
+            get enemyBullets() { return enemyBullets; }, // 敵弾（push('x,y,speed')すれば既存の描画・自機当たり判定にそのまま乗る）
+            getPlayerHitboxRadius,
+            checkPlayerHit,
+            endBossFight,
+            addScore(n) { score += n; },
+            addScoreEffect(x, y, text, color, size, life) {
+                scoreEffects.push({
+                    x, y, text,
+                    color: color || COLOR_ACCENT,
+                    size: size || 12,
+                    life: life || SCORE_EFFECT_LIFE_KILL
+                });
+            },
+            BGM
+        };
+        window.registerBoss = registerBoss;
     })();
+    </script>
+
+    <!--
+        ボス戦のロジックはここから下に分けて記述しています
+        （メインのゲーム本体スクリプトとは別の<script>タグですが、
+        　単独ファイルの読み込みで問題が起きないよう、同じHTML内に
+        　直接埋め込んでいます）。
+    -->
+    <script>
+        /*****************************************************************
+         * ボス定義（boss1〜boss4）
+         *
+         * ここから下は元々 boss1.js として分離していた内容と同じ役割を、
+         * boss1〜boss4の4体分まとめて記述している。
+         * このコードはメインゲームのIIFEの「外側」（グローバルスコープ）
+         * で実行されるため、window.Game 経由でのみゲーム内部の状態を
+         * 読み書きする。
+         *
+         * maxHp / rewardScore はユーザー指定の「角（かく）」計算に基づく：
+         *   boss1: 18角 → maxHp18,  reward180
+         *   boss2: 50角 → maxHp50,  reward500
+         *   boss3: 70角 → maxHp70,  reward700
+         *   boss4: 103角 → maxHp103, reward1030
+         *****************************************************************/
+
+        // ---------------- boss1（SCORE:500で出現） ----------------
+        registerBoss('boss1', {
+            name: 'スカウト',
+            maxHp: 18,
+            rewardScore: 180,
+
+            init() {
+                this.x = Game.V_WIDTH / 2;
+                this.y = 90;
+                this.vx = 1.2;
+                this.shootTimer = 70;
+                this.hitFlash = 0;
+            },
+
+            update() {
+                this.x += this.vx;
+                if (this.x < 40) { this.x = 40; this.vx = Math.abs(this.vx); }
+                if (this.x > Game.V_WIDTH - 40) { this.x = Game.V_WIDTH - 40; this.vx = -Math.abs(this.vx); }
+
+                // 一番小型のボスなので、中央から単発弾のみ
+                this.shootTimer--;
+                if (this.shootTimer <= 0) {
+                    this.shootTimer = 65;
+                    Game.enemyBullets.push({ x: this.x, y: this.y + 40, speed: 2.4 });
+                }
+
+                const bullets = Game.bullets;
+                for (let i = 0; i < bullets.length; i++) {
+                    const b = bullets[i];
+                    if (b.y < -10) continue;
+                    if (Math.hypot(b.x - this.x, b.y - (this.y + 18)) < 24) {
+                        this.hp -= b.dmg;
+                        b.y = -9999;
+                        this.hitFlash = 6;
+
+                        if (this.hp <= 0) {
+                            Game.addScoreEffect(this.x, this.y + 18, `+${this.rewardScore}`, '#ffe066', 14, 90);
+                            Game.endBossFight(true);
+                            return;
+                        }
+                    }
+                }
+
+                if (this.hitFlash > 0) this.hitFlash--;
+            },
+
+            render(ctx) {
+                // ユーザー指定デザイン：
+                //  ▲　▲
+                //  ■●■
+                //   ▼
+                //   Ｉ
+                const rows = ["▲　▲", "■●■", "▼", "Ｉ"];
+                const lineHeight = 26;
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = this.hitFlash > 0 ? "#ffffff" : "#ff8833";
+                ctx.shadowColor = "#ff8833";
+                ctx.shadowBlur = 12;
+                ctx.font = "bold 28px Courier New";
+                rows.forEach((line, i) => {
+                    ctx.fillText(line, this.x, this.y + i * lineHeight);
+                });
+                ctx.restore();
+
+                const barW = 160, barH = 8;
+                const hpRatio = Math.max(0, this.hp / this.maxHp);
+                ctx.save();
+                ctx.fillStyle = "#333";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.fillStyle = "#ff8833";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW * hpRatio, barH);
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.restore();
+            }
+        });
+
+        // ---------------- boss2（SCORE:1000で出現） ----------------
+        registerBoss('boss2', {
+            name: 'ガーディアン',
+            maxHp: 50,
+            rewardScore: 500,
+
+            init() {
+                this.x = Game.V_WIDTH / 2;
+                this.y = 90;
+                this.vx = 1.4;
+                this.shootTimer = 60;
+                this.hitFlash = 0;
+            },
+
+            update() {
+                this.x += this.vx;
+                if (this.x < 40) { this.x = 40; this.vx = Math.abs(this.vx); }
+                if (this.x > Game.V_WIDTH - 40) { this.x = Game.V_WIDTH - 40; this.vx = -Math.abs(this.vx); }
+
+                this.shootTimer--;
+                if (this.shootTimer <= 0) {
+                    this.shootTimer = 55;
+                    Game.enemyBullets.push({ x: this.x - 18, y: this.y + 60, speed: 2.6 });
+                    Game.enemyBullets.push({ x: this.x + 18, y: this.y + 60, speed: 2.6 });
+                }
+
+                const bullets = Game.bullets;
+                for (let i = 0; i < bullets.length; i++) {
+                    const b = bullets[i];
+                    if (b.y < -10) continue;
+                    if (Math.hypot(b.x - this.x, b.y - (this.y + 30)) < 34) {
+                        this.hp -= b.dmg;
+                        b.y = -9999;
+                        this.hitFlash = 6;
+
+                        if (this.hp <= 0) {
+                            Game.addScoreEffect(this.x, this.y + 30, `+${this.rewardScore}`, '#ffe066', 14, 90);
+                            Game.endBossFight(true);
+                            return;
+                        }
+                    }
+                }
+
+                if (this.hitFlash > 0) this.hitFlash--;
+            },
+
+            render(ctx) {
+                // ユーザー指定デザイン：
+                //  ▲　▲
+                // ▼■●★●■▼
+                //  Ｉ■■■Ｉ
+                //    ■■
+                //     ▼
+                //     Ｉ
+                const rows = ["▲　▲", "▼■●★●■▼", "Ｉ■■■Ｉ", "■■", "▼", "Ｉ"];
+                const lineHeight = 26;
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = this.hitFlash > 0 ? "#ffffff" : "#ff2255";
+                ctx.shadowColor = "#ff2255";
+                ctx.shadowBlur = 12;
+                ctx.font = "bold 28px Courier New";
+                rows.forEach((line, i) => {
+                    ctx.fillText(line, this.x, this.y + i * lineHeight);
+                });
+                ctx.restore();
+
+                const barW = 160, barH = 8;
+                const hpRatio = Math.max(0, this.hp / this.maxHp);
+                ctx.save();
+                ctx.fillStyle = "#333";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.fillStyle = "#ff2255";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW * hpRatio, barH);
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.restore();
+            }
+        });
+
+        // ---------------- boss3（SCORE:2000で出現） ----------------
+        registerBoss('boss3', {
+            name: 'ヘビーガーディアン',
+            maxHp: 70,
+            rewardScore: 700,
+
+            init() {
+                this.x = Game.V_WIDTH / 2;
+                this.y = 90;
+                this.vx = 1.6;
+                this.shootTimer = 50;
+                this.hitFlash = 0;
+            },
+
+            update() {
+                this.x += this.vx;
+                if (this.x < 50) { this.x = 50; this.vx = Math.abs(this.vx); }
+                if (this.x > Game.V_WIDTH - 50) { this.x = Game.V_WIDTH - 50; this.vx = -Math.abs(this.vx); }
+
+                this.shootTimer--;
+                if (this.shootTimer <= 0) {
+                    this.shootTimer = 45;
+                    Game.enemyBullets.push({ x: this.x - 24, y: this.y + 60, speed: 2.8 });
+                    Game.enemyBullets.push({ x: this.x,      y: this.y + 60, speed: 2.8 });
+                    Game.enemyBullets.push({ x: this.x + 24, y: this.y + 60, speed: 2.8 });
+                }
+
+                const bullets = Game.bullets;
+                for (let i = 0; i < bullets.length; i++) {
+                    const b = bullets[i];
+                    if (b.y < -10) continue;
+                    if (Math.hypot(b.x - this.x, b.y - (this.y + 30)) < 40) {
+                        this.hp -= b.dmg;
+                        b.y = -9999;
+                        this.hitFlash = 6;
+
+                        if (this.hp <= 0) {
+                            Game.addScoreEffect(this.x, this.y + 30, `+${this.rewardScore}`, '#ffe066', 14, 90);
+                            Game.endBossFight(true);
+                            return;
+                        }
+                    }
+                }
+
+                if (this.hitFlash > 0) this.hitFlash--;
+            },
+
+            render(ctx) {
+                // ユーザー指定デザイン：
+                //  ▲　　　▲
+                // ▼■■●★●■■▼
+                //  Ｉ■■■■■Ｉ
+                //     ■■■
+                //      ▼
+                //      Ｉ
+                const rows = ["▲　　　▲", "▼■■●★●■■▼", "Ｉ■■■■■Ｉ", "■■■", "▼", "Ｉ"];
+                const lineHeight = 26;
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = this.hitFlash > 0 ? "#ffffff" : "#cc33ff";
+                ctx.shadowColor = "#cc33ff";
+                ctx.shadowBlur = 12;
+                ctx.font = "bold 28px Courier New";
+                rows.forEach((line, i) => {
+                    ctx.fillText(line, this.x, this.y + i * lineHeight);
+                });
+                ctx.restore();
+
+                const barW = 160, barH = 8;
+                const hpRatio = Math.max(0, this.hp / this.maxHp);
+                ctx.save();
+                ctx.fillStyle = "#333";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.fillStyle = "#cc33ff";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW * hpRatio, barH);
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.restore();
+            }
+        });
+
+        // ---------------- boss4（SCORE:4000で出現） ----------------
+        registerBoss('boss4', {
+            name: 'グランドガーディアン',
+            maxHp: 103,
+            rewardScore: 1030,
+
+            init() {
+                this.x = Game.V_WIDTH / 2;
+                this.y = 90;
+                this.vx = 1.8;
+                this.shootTimer = 45;
+                this.hitFlash = 0;
+            },
+
+            update() {
+                this.x += this.vx;
+                if (this.x < 60) { this.x = 60; this.vx = Math.abs(this.vx); }
+                if (this.x > Game.V_WIDTH - 60) { this.x = Game.V_WIDTH - 60; this.vx = -Math.abs(this.vx); }
+
+                this.shootTimer--;
+                if (this.shootTimer <= 0) {
+                    this.shootTimer = 40;
+                    Game.enemyBullets.push({ x: this.x - 30, y: this.y + 80, speed: 3.0 });
+                    Game.enemyBullets.push({ x: this.x - 10, y: this.y + 80, speed: 3.0 });
+                    Game.enemyBullets.push({ x: this.x + 10, y: this.y + 80, speed: 3.0 });
+                    Game.enemyBullets.push({ x: this.x + 30, y: this.y + 80, speed: 3.0 });
+                }
+
+                const bullets = Game.bullets;
+                for (let i = 0; i < bullets.length; i++) {
+                    const b = bullets[i];
+                    if (b.y < -10) continue;
+                    if (Math.hypot(b.x - this.x, b.y - (this.y + 40)) < 46) {
+                        this.hp -= b.dmg;
+                        b.y = -9999;
+                        this.hitFlash = 6;
+
+                        if (this.hp <= 0) {
+                            Game.addScoreEffect(this.x, this.y + 40, `+${this.rewardScore}`, '#ffe066', 14, 90);
+                            Game.endBossFight(true);
+                            return;
+                        }
+                    }
+                }
+
+                if (this.hitFlash > 0) this.hitFlash--;
+            },
+
+            render(ctx) {
+                // ユーザー指定デザイン：
+                //  ▲　　　▲
+                // ▼■■●★★●■■▼
+                //  ■■■■■■■■
+                //  Ｉ■■■■■Ｉ
+                //    ■■■■
+                //      ▼
+                //      Ｉ
+                const rows = ["▲　　　▲", "▼■■●★★●■■▼", "■■■■■■■■", "Ｉ■■■■■Ｉ", "■■■■", "▼", "Ｉ"];
+                const lineHeight = 26;
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = this.hitFlash > 0 ? "#ffffff" : "#3399ff";
+                ctx.shadowColor = "#3399ff";
+                ctx.shadowBlur = 12;
+                ctx.font = "bold 28px Courier New";
+                rows.forEach((line, i) => {
+                    ctx.fillText(line, this.x, this.y + i * lineHeight);
+                });
+                ctx.restore();
+
+                const barW = 160, barH = 8;
+                const hpRatio = Math.max(0, this.hp / this.maxHp);
+                ctx.save();
+                ctx.fillStyle = "#333";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.fillStyle = "#3399ff";
+                ctx.fillRect(Game.V_WIDTH / 2 - barW / 2, 10, barW * hpRatio, barH);
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(Game.V_WIDTH / 2 - barW / 2, 10, barW, barH);
+                ctx.restore();
+            }
+        });
+
+        /*****************************************************************
+         * boss5（SCORE:6000で出現）
+         *
+         * 「無限角」— 撃破不可能なボーナス面。
+         * 外周（▲/▼/●の枠）は完全に無敵。内側の升目だけが自機弾で
+         * 破壊でき、1体につき少しスコアが入る。破壊された升目は
+         * 消えた順番に1秒ごとに1体ずつ復活し、復活時にランダムな
+         * 記号（●／▼／■／★）へ変わる。
+         *
+         * 戦闘開始時に「第1形態→第2形態→第3形態→第4形態」と
+         * 内側が単一記号で埋まった形態を順番に見せる演出を挟んでから、
+         * 内側がランダムな記号になる「最終ランダム形態」に入り、
+         * そこから先はずっとこの状態が続く（自機がやられるまで終わらない）。
+         *
+         * ※以下の数値は仕様書に無かった部分の暫定値（要調整可）：
+         *   ・イントロ／各形態の表示時間（フレーム数）
+         *   ・内側1体破壊ごとの加点（20点）
+         *   ・自動加点（SCORE UP STAGE演出、1秒ごとに+5点）
+         *****************************************************************/
+        registerBoss('boss5', {
+            name: '無限角',
+            maxHp: Infinity,     // 実質無敵。HPが尽きて倒れることはない
+            rewardScore: 0,      // 撃破自体が存在しないため報酬なし
+
+            ROW_WIDTHS: [3, 5, 6, 7, 7, 7, 6, 5, 3],
+            CELL_SIZE: 20,
+            FORM_SYMBOLS: ['●', '▲', '■', '★'],
+            FORM_LABELS: ['第1●形態', '第2▲形態', '第3■形態', '第4★形態'],
+            RANDOM_SYMBOLS: ['●', '▼', '■', '★'],
+
+            init() {
+                this.x = Game.V_WIDTH / 2;
+                this.y = Game.V_HEIGHT / 2 + 10;
+                this.hp = this.maxHp;
+                this.hitFlash = 0; // 演出上使わないが他ボスとの互換のため保持
+
+                this.phase = 'intro';      // 'intro' -> 'form' -> 'final'
+                this.introTimer = 150;     // 約2.5秒（60fps想定）
+                this.formIndex = 0;        // 0〜3（第1〜第4形態）
+                this.formTimer = 70;       // 各形態の表示時間
+
+                this.scoreTickTimer = 60;  // SCORE UP STAGE演出：1秒ごとに加点
+                this.respawnTimer = 60;    // 破壊された升目：1秒ごとに1体復活
+                this.respawnQueue = [];    // 復活待ちの升目（消えた順に並ぶ）
+
+                this.cells = this.buildCells();
+            },
+
+            // 枠（indexRow, indexCol）を含む全升目の座標・属性を作る
+            buildCells() {
+                const rows = [];
+                const numRows = this.ROW_WIDTHS.length;
+                const centerRow = (numRows - 1) / 2;
+                for (let r = 0; r < numRows; r++) {
+                    const w = this.ROW_WIDTHS[r];
+                    const centerCol = (w - 1) / 2;
+                    const row = [];
+                    for (let c = 0; c < w; c++) {
+                        let isBorder, borderSymbol = null;
+                        if (r === 0) { isBorder = true; borderSymbol = (c === 1) ? '●' : '▲'; }
+                        else if (r === numRows - 1) { isBorder = true; borderSymbol = (c === 1) ? '●' : '▼'; }
+                        else if (c === 0 || c === w - 1) { isBorder = true; borderSymbol = '●'; }
+                        else { isBorder = false; }
+
+                        row.push({
+                            row: r, col: c,
+                            offsetX: (c - centerCol) * this.CELL_SIZE,
+                            offsetY: (r - centerRow) * this.CELL_SIZE,
+                            isBorder,
+                            borderSymbol,
+                            alive: true,
+                            symbol: isBorder ? borderSymbol : this.randomSymbol()
+                        });
+                    }
+                    rows.push(row);
+                }
+                return rows;
+            },
+
+            randomSymbol() {
+                return this.RANDOM_SYMBOLS[Math.floor(Math.random() * this.RANDOM_SYMBOLS.length)];
+            },
+
+            update() {
+                // ボス本体は動かず、外周も破壊不能。ここでは
+                // フェーズ進行・内側升目の当たり判定・復活処理のみ行う。
+
+                if (this.phase === 'intro') {
+                    this.introTimer--;
+                    if (this.introTimer <= 0) { this.phase = 'form'; }
+                    return;
+                }
+
+                if (this.phase === 'form') {
+                    this.formTimer--;
+                    if (this.formTimer <= 0) {
+                        this.formIndex++;
+                        this.formTimer = 70;
+                        if (this.formIndex >= this.FORM_SYMBOLS.length) {
+                            this.phase = 'final';
+                            // 最終形態に入る瞬間、内側升目をランダム記号で確定
+                            for (const row of this.cells) {
+                                for (const cell of row) {
+                                    if (!cell.isBorder) { cell.alive = true; cell.symbol = this.randomSymbol(); }
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // --- ここから最終ランダム形態（無限に継続） ---
+
+                // SCORE UP STAGE：時間経過で自動的に加点され続ける
+                this.scoreTickTimer--;
+                if (this.scoreTickTimer <= 0) {
+                    this.scoreTickTimer = 60;
+                    Game.addScore(5);
+                    Game.addScoreEffect(this.x, this.y - 120, '+5', '#ffe066', 10, 40);
+                }
+
+                // 破壊された升目の復活（消えた順に1秒ごとに1体）
+                this.respawnTimer--;
+                if (this.respawnTimer <= 0) {
+                    this.respawnTimer = 60;
+                    const next = this.respawnQueue.shift();
+                    if (next) { next.alive = true; next.symbol = this.randomSymbol(); }
+                }
+
+                // 内側升目と自機弾の当たり判定（外周は対象外＝無敵）
+                const bullets = Game.bullets;
+                for (const row of this.cells) {
+                    for (const cell of row) {
+                        if (cell.isBorder || !cell.alive) continue;
+                        const cx = this.x + cell.offsetX;
+                        const cy = this.y + cell.offsetY;
+                        for (let i = 0; i < bullets.length; i++) {
+                            const b = bullets[i];
+                            if (b.y < -10) continue;
+                            if (Math.hypot(b.x - cx, b.y - cy) < this.CELL_SIZE * 0.55) {
+                                b.y = -9999;
+                                cell.alive = false;
+                                this.respawnQueue.push(cell);
+                                Game.addScore(20);
+                                Game.addScoreEffect(cx, cy, '+20', '#66ffcc', 10, 40);
+                                break;
+                            }
+                        }
+                    }
+                }
+            },
+
+            render(ctx) {
+                if (this.phase === 'intro') {
+                    this.renderIntroBanner(ctx);
+                    return;
+                }
+
+                this.renderShape(ctx);
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#ffe066";
+                ctx.font = "bold 16px Courier New";
+                const label = this.phase === 'form'
+                    ? this.FORM_LABELS[this.formIndex]
+                    : "最終ランダム形態";
+                ctx.fillText(label, this.x, this.y + 130);
+                ctx.restore();
+
+                // 通常のHPバーの代わりに「∞角」表示（この升目は倒せない）
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#ff5577";
+                ctx.font = "bold 14px Courier New";
+                ctx.fillText("∞角 - 無限角 - 撃破不可", Game.V_WIDTH / 2, 20);
+                ctx.restore();
+            },
+
+            renderIntroBanner(ctx) {
+                const lines = [
+                    "★★★★★★★★★★★★★★",
+                    "　　 SCORE UP STAGE!!",
+                    " 　 ∞ 角－KAKU－BONUS",
+                    "　You can't beat this boss.",
+                    "",
+                    "★★★★★★★★★★★★★★"
+                ];
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.font = "bold 18px Courier New";
+                ctx.shadowColor = "#ffe066";
+                ctx.shadowBlur = 10;
+                lines.forEach((line, i) => {
+                    ctx.fillStyle = (i === 0 || i === lines.length - 1) ? "#ffe066" : "#ffffff";
+                    ctx.fillText(line, Game.V_WIDTH / 2, this.y - 90 + i * 24);
+                });
+                ctx.restore();
+            },
+
+            renderShape(ctx) {
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.font = `bold ${this.CELL_SIZE}px Courier New`;
+
+                for (const row of this.cells) {
+                    for (const cell of row) {
+                        const cx = this.x + cell.offsetX;
+                        const cy = this.y + cell.offsetY;
+
+                        if (cell.isBorder) {
+                            ctx.fillStyle = "#ffe066";
+                            ctx.shadowColor = "#ffe066";
+                            ctx.shadowBlur = 8;
+                            ctx.fillText(cell.borderSymbol, cx, cy);
+                            continue;
+                        }
+
+                        if (this.phase === 'form') {
+                            ctx.fillStyle = "#ff5577";
+                            ctx.shadowColor = "#ff5577";
+                            ctx.shadowBlur = 6;
+                            ctx.fillText(this.FORM_SYMBOLS[this.formIndex], cx, cy);
+                        } else if (cell.alive) {
+                            ctx.fillStyle = "#ff5577";
+                            ctx.shadowColor = "#ff5577";
+                            ctx.shadowBlur = 6;
+                            ctx.fillText(cell.symbol, cx, cy);
+                        } else {
+                            // 復活待ちの升目：目印程度に薄く表示
+                            ctx.fillStyle = "rgba(255,255,255,0.15)";
+                            ctx.shadowBlur = 0;
+                            ctx.fillText("・", cx, cy);
+                        }
+                    }
+                }
+                ctx.restore();
+            }
+        });
+
     </script>
 </body>
 </html>
