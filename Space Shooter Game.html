@@ -348,7 +348,7 @@
         const COLOR_STAR = "rgba(255, 255, 255, 0.4)";
 
         // --- プレイヤー ---
-        const PLAYER_SPEED = 3.2;
+        const PLAYER_SPEED = 6.5;
         const PLAYER_HITBOX_BY_LEVEL = { 1: 12, 2: 18, 3: 24 }; // pItemsCollected別の当たり判定半径
         const SHOOT_COOLDOWN_MAX = 30;
         const INVINCIBILITY_DURATION = 60; // 被弾後の無敵時間（フレーム数）
@@ -451,6 +451,12 @@
         let isPaused = false;               // 一時停止中かどうか
         let newRecordThisRun = false;       // 今回のプレイでハイスコアを更新したか
         let score = 0;
+
+        // スマホ等でrequestAnimationFrameが60fpsより低い/不安定になっても
+        // 体感速度が変わらないようにするための、フレーム経過時間の倍率。
+        // 1.0 = 理想的な60fpsで1フレーム経過した場合の基準値。
+        let dt = 1;
+        let lastFrameTimestamp = null;
 
         let playerX = V_WIDTH / 2;
         let moveDirection = 0; // タッチボタン用の移動方向（-1, 0, 1）
@@ -1116,6 +1122,21 @@
         let currentBoss = null;  // 現在戦闘中のボスのインスタンス（登録定義のコピー）
         let inBossFight = false;
 
+        // ---- 最終ボス(boss5)出現後の「周回」システム ----
+        // 最終ボスは消えずに残り続け、その上に雑魚敵や1〜4番目のボスが
+        // 繰り返し重なって出現することで、難易度がどこまでも上がり続ける。
+        const EXTRA_BOSS_IDS = ['boss1', 'boss2', 'boss3', 'boss4'];
+        const EXTRA_BOSS_START_SCORE = 15000;    // このスコアを超えたら雑魚敵が復活する
+        const EXTRA_BOSS_SCORE_STEP = 3000;      // 周回ボス1体ごとに必要な追加スコア
+        const EXTRA_BOSS_GROWTH_PER_LAP = 0.25;  // 1周ごとにHP・報酬を+25%（難易度上昇）
+
+        let finalBossActive = false;      // boss5が出現済みかどうか
+        let regularEnemiesUnlocked = false; // 雑魚敵が復活したかどうか
+        let extraBoss = null;             // 現在の周回ボスのインスタンス
+        let extraBossCycleIndex = 0;      // 0=boss1, 1=boss2, 2=boss3, 3=boss4
+        let extraBossLap = 0;             // 周回数（強化倍率に使用）
+        let nextExtraBossScore = EXTRA_BOSS_START_SCORE;
+
         function checkBossTrigger() {
             if (inBossFight) return;
             for (const entry of BOSS_SCHEDULE) {
@@ -1138,8 +1159,15 @@
             enemyBullets = [];
 
             currentBoss = Object.create(def);
+            currentBoss.__id = id;
             currentBoss.hp = currentBoss.maxHp;
             if (typeof currentBoss.init === "function") currentBoss.init();
+
+            if (id === 'boss5') {
+                finalBossActive = true;
+                nextExtraBossScore = score + EXTRA_BOSS_SCORE_STEP; // 15000点到達より前に着いた場合の保険
+                if (nextExtraBossScore < EXTRA_BOSS_START_SCORE) nextExtraBossScore = EXTRA_BOSS_START_SCORE;
+            }
 
             scoreEffects.push({
                 x: V_WIDTH / 2, y: V_HEIGHT / 2,
@@ -1148,11 +1176,65 @@
             });
         }
 
+        // 最終ボス出現後、スコアに応じて雑魚敵を復活させ、
+        // 1〜4番目のボスを周回（boss1→2→3→4→1…）で重ねて出現させる
+        function checkExtraBossTrigger() {
+            if (!finalBossActive) return;
+
+            if (!regularEnemiesUnlocked && score >= EXTRA_BOSS_START_SCORE) {
+                regularEnemiesUnlocked = true;
+            }
+
+            if (!extraBoss && score >= nextExtraBossScore) {
+                startExtraBossFight();
+            }
+        }
+
+        function startExtraBossFight() {
+            const id = EXTRA_BOSS_IDS[extraBossCycleIndex];
+            const def = BossRegistry[id];
+            if (!def) return;
+
+            // 周回数に応じてHP・報酬を強化し、周を重ねるごとに難易度を上げる
+            const growth = 1 + extraBossLap * EXTRA_BOSS_GROWTH_PER_LAP;
+
+            extraBoss = Object.create(def);
+            extraBoss.__id = id;
+            extraBoss.maxHp = Math.round(def.maxHp * growth);
+            extraBoss.rewardScore = Math.round(def.rewardScore * growth);
+            extraBoss.hp = extraBoss.maxHp;
+            if (typeof extraBoss.init === "function") extraBoss.init();
+
+            scoreEffects.push({
+                x: V_WIDTH / 2, y: V_HEIGHT / 2 + 70,
+                text: extraBoss.name ? `WARNING: ${extraBoss.name} (Lap ${extraBossLap + 1})` : "WARNING: BOSS",
+                color: COLOR_ACCENT, size: 14, life: 90
+            });
+        }
+
         function endBossFight(victory) {
+            // 最終ボス出現後の「周回ボス」を倒した／中断した場合は、
+            // 最終ボス(currentBoss)には触れず、周回だけを進める
+            if (finalBossActive && extraBoss) {
+                if (victory) {
+                    score += extraBoss.rewardScore || 0;
+                    BGM.playHighScoreFanfare();
+                }
+                extraBoss = null;
+                extraBossCycleIndex = (extraBossCycleIndex + 1) % EXTRA_BOSS_IDS.length;
+                if (extraBossCycleIndex === 0) extraBossLap++;
+                nextExtraBossScore = score + EXTRA_BOSS_SCORE_STEP;
+                return;
+            }
+
             if (victory && currentBoss) {
                 score += currentBoss.rewardScore || 0;
                 BGM.playHighScoreFanfare();
             }
+
+            // 最終ボス(boss5)はそのまま消えない
+            if (currentBoss && currentBoss.__id === 'boss5') { return; }
+
             currentBoss = null;
             inBossFight = false;
         }
@@ -1176,6 +1258,12 @@
             currentBoss = null;
             inBossFight = false;
             triggeredBossScores.clear();
+            finalBossActive = false;
+            regularEnemiesUnlocked = false;
+            extraBoss = null;
+            extraBossCycleIndex = 0;
+            extraBossLap = 0;
+            nextExtraBossScore = EXTRA_BOSS_START_SCORE;
             pauseOverlay.style.display = "none";
             stopBtn.textContent = "STOP";
 
@@ -1328,11 +1416,11 @@
 
         function updatePlayerMovement() {
             if (keys["ArrowLeft"] || keys["Left"]) {
-                playerX -= PLAYER_SPEED;
+                playerX -= PLAYER_SPEED * dt;
             } else if (keys["ArrowRight"] || keys["Right"]) {
-                playerX += PLAYER_SPEED;
+                playerX += PLAYER_SPEED * dt;
             } else {
-                playerX += moveDirection * PLAYER_SPEED;
+                playerX += moveDirection * PLAYER_SPEED * dt;
             }
             const margin = getPlayerHalfWidth();
             if (playerX < margin) playerX = margin;
@@ -1340,7 +1428,7 @@
         }
 
         function updatePlayerShooting() {
-            shootCooldown--;
+            shootCooldown -= dt;
             if (shootCooldown <= 0) {
                 fireAutoShot();
                 shootCooldown = SHOOT_COOLDOWN_MAX;
@@ -1349,7 +1437,7 @@
 
         function updateInvincibility() {
             if (invincibilityTimer > 0) {
-                invincibilityTimer--;
+                invincibilityTimer -= dt;
             }
         }
 
@@ -1375,7 +1463,7 @@
         }
 
         function updateItemsPosition() {
-            items.forEach(it => { it.y += ITEM_FALL_SPEED; });
+            items.forEach(it => { it.y += ITEM_FALL_SPEED * dt; });
         }
 
         // Pアイテムを画面下端を大きく超えたものだけ破棄する
@@ -1556,17 +1644,17 @@
 
         function updateParticles() {
             particles.forEach(p => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= dt;
             });
             particles = particles.filter(p => p.life > 0);
         }
 
         function updateScoreEffects() {
             scoreEffects.forEach(fx => {
-                fx.y -= 0.5;
-                fx.life--;
+                fx.y -= 0.5 * dt;
+                fx.life -= dt;
             });
             scoreEffects = scoreEffects.filter(fx => fx.life > 0);
         }
@@ -1720,6 +1808,13 @@
                     console.warn('Boss render failed:', e);
                 }
             }
+            if (extraBoss && typeof extraBoss.render === "function") {
+                try {
+                    extraBoss.render(ctx);
+                } catch (e) {
+                    console.warn('Extra boss render failed:', e);
+                }
+            }
 
             ctx.shadowBlur = 0;
         }
@@ -1734,7 +1829,7 @@
             if (!isRampagePhase()) return;
 
             enemies.forEach(e => {
-                e.x += e.hDir * ENEMY_HORIZONTAL_SPEED;
+                e.x += e.hDir * ENEMY_HORIZONTAL_SPEED * dt;
                 if (e.x < ENEMY_HORIZONTAL_MARGIN) {
                     e.x = ENEMY_HORIZONTAL_MARGIN;
                     e.hDir = 1;
@@ -1746,14 +1841,17 @@
         }
 
         function updateEntityPositions() {
-            bullets.forEach(b => b.y -= b.speed);
-            enemies.forEach(e => e.y += e.speed);
+            bullets.forEach(b => b.y -= b.speed * dt);
+            enemies.forEach(e => e.y += e.speed * dt);
             updateEnemyHorizontalMovement();
-            enemyBullets.forEach(eb => eb.y += eb.speed);
+            enemyBullets.forEach(eb => {
+                eb.x += (eb.vx || 0) * dt;
+                eb.y += eb.speed * dt;
+            });
             updateItemsPosition();
 
             stars.forEach(s => {
-                s.y += s.speed;
+                s.y += s.speed * dt;
                 if (s.y > V_HEIGHT) {
                     s.y = 0;
                     s.x = Math.random() * V_WIDTH;
@@ -1778,7 +1876,7 @@
         }
 
         function updateEnemySpawning() {
-            enemySpawnCooldown--;
+            enemySpawnCooldown -= dt;
             if (enemySpawnCooldown <= 0) {
                 spawnEnemy();
 
@@ -1796,7 +1894,7 @@
         }
 
         function updateEnemyShooting() {
-            enemyShootCooldown--;
+            enemyShootCooldown -= dt;
             if (enemyShootCooldown <= 0) {
                 // 難易度レベルに応じて、敵弾の速度が段階的に上昇（レベル1につき+12%）
                 const bulletSpeedMultiplier = 1.0 + (getDifficultyLevel() * DIFFICULTY_BULLET_SPEED_STEP);
@@ -1818,6 +1916,8 @@
             updatePlayerShooting();
 
             checkBossTrigger();
+            checkExtraBossTrigger();
+
             if (inBossFight) {
                 if (currentBoss && typeof currentBoss.update === "function") {
                     try {
@@ -1826,6 +1926,19 @@
                         console.warn('Boss update failed, ending boss fight safely:', e);
                         endBossFight(false);
                     }
+                }
+                // 最終ボス出現後は、周回ボスや雑魚敵も同時に動き続ける
+                if (extraBoss && typeof extraBoss.update === "function") {
+                    try {
+                        extraBoss.update();
+                    } catch (e) {
+                        console.warn('Extra boss update failed, skipping this lap:', e);
+                        endBossFight(false);
+                    }
+                }
+                if (regularEnemiesUnlocked) {
+                    updateEnemySpawning();
+                    updateEnemyShooting();
                 }
             } else {
                 updateEnemySpawning();
@@ -1854,8 +1967,24 @@
             renderUI();
         }
 
-        function gameLoop() {
+        function gameLoop(timestamp) {
             if (!isPlaying || isPaused) return;
+
+            if (typeof timestamp === 'number') {
+                if (lastFrameTimestamp == null) {
+                    lastFrameTimestamp = timestamp;
+                    dt = 1;
+                } else {
+                    const elapsedMs = timestamp - lastFrameTimestamp;
+                    lastFrameTimestamp = timestamp;
+                    // 60fps基準の1フレーム(約16.67ms)を1.0とした倍率。
+                    // タブ切り替え直後などの極端な値は0.2〜3の範囲にクランプする。
+                    dt = Math.min(Math.max(elapsedMs / (1000 / 60), 0.2), 3);
+                }
+            } else {
+                // startGame()からの初回呼び出しはrAF経由ではないのでtimestampが無い
+                dt = 1;
+            }
 
             updateMechanics();
             renderCanvas();
@@ -1934,6 +2063,7 @@
                 BGM.resume();
                 pauseOverlay.style.display = "none";
                 stopBtn.textContent = "STOP";
+                lastFrameTimestamp = null; // 再開直後の経過時間ジャンプを防ぐ
                 gameLoop();
             }
         }
@@ -2028,6 +2158,7 @@
             get V_WIDTH() { return V_WIDTH; },
             get V_HEIGHT() { return V_HEIGHT; },
             get score() { return score; },
+            get dt() { return dt; },
             get invincibilityTimer() { return invincibilityTimer; },
             get bullets() { return bullets; },           // 自機弾（配列参照。読むだけ・destroy目的でy等を書き換えるのはOK）
             get enemyBullets() { return enemyBullets; }, // 敵弾（push('x,y,speed')すれば既存の描画・自機当たり判定にそのまま乗る）
@@ -2035,6 +2166,8 @@
             checkPlayerHit,
             endBossFight,
             addScore(n) { score += n; },
+            trySpawnItemAt,
+            spawnItemAt(x, y) { items.push({ x: x, y: Math.max(y, 0) }); },
             addScoreEffect(x, y, text, color, size, life) {
                 scoreEffects.push({
                     x, y, text,
@@ -2087,12 +2220,12 @@
             },
 
             update() {
-                this.x += this.vx;
+                this.x += this.vx * Game.dt;
                 if (this.x < 40) { this.x = 40; this.vx = Math.abs(this.vx); }
                 if (this.x > Game.V_WIDTH - 40) { this.x = Game.V_WIDTH - 40; this.vx = -Math.abs(this.vx); }
 
                 // 一番小型のボスなので、中央から単発弾のみ
-                this.shootTimer--;
+                this.shootTimer -= Game.dt;
                 if (this.shootTimer <= 0) {
                     this.shootTimer = 65;
                     Game.enemyBullets.push({ x: this.x, y: this.y + 40, speed: 2.4 });
@@ -2115,7 +2248,7 @@
                     }
                 }
 
-                if (this.hitFlash > 0) this.hitFlash--;
+                if (this.hitFlash > 0) this.hitFlash -= Game.dt;
             },
 
             render(ctx) {
@@ -2168,11 +2301,11 @@
             },
 
             update() {
-                this.x += this.vx;
+                this.x += this.vx * Game.dt;
                 if (this.x < 40) { this.x = 40; this.vx = Math.abs(this.vx); }
                 if (this.x > Game.V_WIDTH - 40) { this.x = Game.V_WIDTH - 40; this.vx = -Math.abs(this.vx); }
 
-                this.shootTimer--;
+                this.shootTimer -= Game.dt;
                 if (this.shootTimer <= 0) {
                     this.shootTimer = 55;
                     Game.enemyBullets.push({ x: this.x - 18, y: this.y + 60, speed: 2.6 });
@@ -2196,7 +2329,7 @@
                     }
                 }
 
-                if (this.hitFlash > 0) this.hitFlash--;
+                if (this.hitFlash > 0) this.hitFlash -= Game.dt;
             },
 
             render(ctx) {
@@ -2251,11 +2384,11 @@
             },
 
             update() {
-                this.x += this.vx;
+                this.x += this.vx * Game.dt;
                 if (this.x < 50) { this.x = 50; this.vx = Math.abs(this.vx); }
                 if (this.x > Game.V_WIDTH - 50) { this.x = Game.V_WIDTH - 50; this.vx = -Math.abs(this.vx); }
 
-                this.shootTimer--;
+                this.shootTimer -= Game.dt;
                 if (this.shootTimer <= 0) {
                     this.shootTimer = 45;
                     Game.enemyBullets.push({ x: this.x - 24, y: this.y + 60, speed: 2.8 });
@@ -2280,7 +2413,7 @@
                     }
                 }
 
-                if (this.hitFlash > 0) this.hitFlash--;
+                if (this.hitFlash > 0) this.hitFlash -= Game.dt;
             },
 
             render(ctx) {
@@ -2335,11 +2468,11 @@
             },
 
             update() {
-                this.x += this.vx;
+                this.x += this.vx * Game.dt;
                 if (this.x < 60) { this.x = 60; this.vx = Math.abs(this.vx); }
                 if (this.x > Game.V_WIDTH - 60) { this.x = Game.V_WIDTH - 60; this.vx = -Math.abs(this.vx); }
 
-                this.shootTimer--;
+                this.shootTimer -= Game.dt;
                 if (this.shootTimer <= 0) {
                     this.shootTimer = 40;
                     Game.enemyBullets.push({ x: this.x - 30, y: this.y + 80, speed: 3.0 });
@@ -2365,7 +2498,7 @@
                     }
                 }
 
-                if (this.hitFlash > 0) this.hitFlash--;
+                if (this.hitFlash > 0) this.hitFlash -= Game.dt;
             },
 
             render(ctx) {
@@ -2438,7 +2571,8 @@
 
             init() {
                 this.x = Game.V_WIDTH / 2;
-                this.y = Game.V_HEIGHT / 2 + 10;
+                this.y = 150;        // 上側に出現し、左右に動く
+                this.vx = 1.3;       // 左右移動速度
                 this.hp = this.maxHp;
                 this.hitFlash = 0; // 演出上使わないが他ボスとの互換のため保持
 
@@ -2450,6 +2584,8 @@
                 this.scoreTickTimer = 60;  // SCORE UP STAGE演出：1秒ごとに加点
                 this.respawnTimer = 60;    // 破壊された升目：1秒ごとに1体復活
                 this.respawnQueue = [];    // 復活待ちの升目（消えた順に並ぶ）
+
+                this.shootTimer = 50;      // 攻撃タイマー（最終ランダム形態でのみ使用）
 
                 this.cells = this.buildCells();
             },
@@ -2490,17 +2626,20 @@
             },
 
             update() {
-                // ボス本体は動かず、外周も破壊不能。ここでは
-                // フェーズ進行・内側升目の当たり判定・復活処理のみ行う。
+                // 左右移動（画面端で跳ね返る）。ボス本体・外周は破壊不能なまま、
+                // 位置だけ他のボスと同様に動く。
+                this.x += this.vx * Game.dt;
+                if (this.x < 90) { this.x = 90; this.vx = Math.abs(this.vx); }
+                if (this.x > Game.V_WIDTH - 90) { this.x = Game.V_WIDTH - 90; this.vx = -Math.abs(this.vx); }
 
                 if (this.phase === 'intro') {
-                    this.introTimer--;
+                    this.introTimer -= Game.dt;
                     if (this.introTimer <= 0) { this.phase = 'form'; }
                     return;
                 }
 
                 if (this.phase === 'form') {
-                    this.formTimer--;
+                    this.formTimer -= Game.dt;
                     if (this.formTimer <= 0) {
                         this.formIndex++;
                         this.formTimer = 70;
@@ -2517,10 +2656,24 @@
                     return;
                 }
 
-                // --- ここから最終ランダム形態（無限に継続） ---
+                // --- ここから最終ランダム形態（撃破不可・無限に継続） ---
+
+                // 攻撃：ランダム式、5発同時発射（横方向にランダムなブレを持たせる）
+                this.shootTimer -= Game.dt;
+                if (this.shootTimer <= 0) {
+                    this.shootTimer = 55;
+                    for (let i = 0; i < 5; i++) {
+                        Game.enemyBullets.push({
+                            x: this.x + (Math.random() - 0.5) * 140,
+                            y: this.y + 95,
+                            speed: 2.2 + Math.random() * 1.6,
+                            vx: (Math.random() - 0.5) * 1.4
+                        });
+                    }
+                }
 
                 // SCORE UP STAGE：時間経過で自動的に加点され続ける
-                this.scoreTickTimer--;
+                this.scoreTickTimer -= Game.dt;
                 if (this.scoreTickTimer <= 0) {
                     this.scoreTickTimer = 60;
                     Game.addScore(5);
@@ -2528,14 +2681,14 @@
                 }
 
                 // 破壊された升目の復活（消えた順に1秒ごとに1体）
-                this.respawnTimer--;
+                this.respawnTimer -= Game.dt;
                 if (this.respawnTimer <= 0) {
                     this.respawnTimer = 60;
                     const next = this.respawnQueue.shift();
                     if (next) { next.alive = true; next.symbol = this.randomSymbol(); }
                 }
 
-                // 内側升目と自機弾の当たり判定（外周は対象外＝無敵）
+                // 内側升目と自機弾の当たり判定(外周は対象外＝無敵)
                 const bullets = Game.bullets;
                 for (const row of this.cells) {
                     for (const cell of row) {
@@ -2549,8 +2702,12 @@
                                 b.y = -9999;
                                 cell.alive = false;
                                 this.respawnQueue.push(cell);
-                                Game.addScore(20);
-                                Game.addScoreEffect(cx, cy, '+20', '#66ffcc', 10, 40);
+                                Game.addScore(100);
+                                Game.addScoreEffect(cx, cy, '+100', '#66ffcc', 10, 40);
+                                // 最終ボス戦はスコアが高く「猛攻フェーズ」判定に入っているため、
+                                // 通常のtrySpawnItemAt()を使うとドロップ率が1/2になってしまう。
+                                // ここでは固定で1/10にする。
+                                if (Math.random() < 0.10) { Game.spawnItemAt(cx, cy); }
                                 break;
                             }
                         }
@@ -2614,37 +2771,45 @@
                 ctx.textBaseline = "middle";
                 ctx.font = `bold ${this.CELL_SIZE}px Courier New`;
 
+                // 外周（枠・無敵）：スタイル設定をループの外で一度だけ行う
+                // （毎マスごとにshadowBlur等を切り替えるとモバイルで重くなるため）
+                ctx.fillStyle = "#ffe066";
+                ctx.shadowColor = "#ffe066";
+                ctx.shadowBlur = 8;
                 for (const row of this.cells) {
                     for (const cell of row) {
-                        const cx = this.x + cell.offsetX;
-                        const cy = this.y + cell.offsetY;
+                        if (!cell.isBorder) continue;
+                        ctx.fillText(cell.borderSymbol, this.x + cell.offsetX, this.y + cell.offsetY);
+                    }
+                }
 
-                        if (cell.isBorder) {
-                            ctx.fillStyle = "#ffe066";
-                            ctx.shadowColor = "#ffe066";
-                            ctx.shadowBlur = 8;
-                            ctx.fillText(cell.borderSymbol, cx, cy);
-                            continue;
-                        }
-
+                // 内側（生存中のマス）
+                ctx.fillStyle = "#ff5577";
+                ctx.shadowColor = "#ff5577";
+                ctx.shadowBlur = 6;
+                for (const row of this.cells) {
+                    for (const cell of row) {
+                        if (cell.isBorder) continue;
                         if (this.phase === 'form') {
-                            ctx.fillStyle = "#ff5577";
-                            ctx.shadowColor = "#ff5577";
-                            ctx.shadowBlur = 6;
-                            ctx.fillText(this.FORM_SYMBOLS[this.formIndex], cx, cy);
+                            ctx.fillText(this.FORM_SYMBOLS[this.formIndex], this.x + cell.offsetX, this.y + cell.offsetY);
                         } else if (cell.alive) {
-                            ctx.fillStyle = "#ff5577";
-                            ctx.shadowColor = "#ff5577";
-                            ctx.shadowBlur = 6;
-                            ctx.fillText(cell.symbol, cx, cy);
-                        } else {
-                            // 復活待ちの升目：目印程度に薄く表示
-                            ctx.fillStyle = "rgba(255,255,255,0.15)";
-                            ctx.shadowBlur = 0;
-                            ctx.fillText("・", cx, cy);
+                            ctx.fillText(cell.symbol, this.x + cell.offsetX, this.y + cell.offsetY);
                         }
                     }
                 }
+
+                // 内側（復活待ちのマス）：影なしでまとめて描画
+                if (this.phase !== 'form') {
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = "rgba(255,255,255,0.15)";
+                    for (const row of this.cells) {
+                        for (const cell of row) {
+                            if (cell.isBorder || cell.alive) continue;
+                            ctx.fillText("・", this.x + cell.offsetX, this.y + cell.offsetY);
+                        }
+                    }
+                }
+
                 ctx.restore();
             }
         });
