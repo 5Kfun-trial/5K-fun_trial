@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>NEON REVERSI - DISTRESSED</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON REVERSI - FULL RESTORE</title>
     <style>
         :root { 
             --bg-color: #010402; 
@@ -35,7 +36,8 @@
         #hud { 
             border: 2px solid var(--text-color); 
             padding: 10px 20px; 
-            width: 320px; 
+            width: 90%; 
+            max-width: 320px;
             margin-bottom: 20px; 
             text-align: center; 
             box-shadow: var(--glow) var(--text-color);
@@ -44,20 +46,31 @@
         
         #board { 
             display: grid; 
-            grid-template-columns: repeat(8, 40px); 
-            grid-template-rows: repeat(8, 40px); 
+            grid-template-columns: repeat(8, 1fr); 
+            grid-template-rows: repeat(8, 1fr); 
             gap: 2px; 
             background: var(--text-color); 
             border: 2px solid var(--text-color);
-            width: 334px; height: 334px;
+            width: 90vw; 
+            height: 90vw;
+            max-width: 334px; 
+            max-height: 334px;
             box-shadow: var(--glow) var(--text-color);
         }
         
-        .cell { width: 40px; height: 40px; background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .cell { background: #000; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
         
-        .disc { width: 30px; height: 30px; border-radius: 50%; transition: 0.3s; }
+        .disc { width: 80%; height: 80%; border-radius: 50%; transition: 0.3s; }
         .black { background: #fff; box-shadow: var(--glow) #fff; }
         .white { background: var(--text-color); box-shadow: var(--glow) var(--text-color); }
+        
+        .valid-move::after {
+            content: '';
+            width: 30%; height: 30%;
+            background: var(--text-color);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
         
         #menu { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
         button { 
@@ -72,6 +85,7 @@
         button:hover { background: var(--text-color); color: #000; }
         
         #msg { color: var(--accent-color); font-size: 1.5rem; margin-top: 15px; font-weight: bold; text-shadow: var(--glow) var(--accent-color); }
+        #role-info { font-size: 0.9rem; margin-top: 5px; color: #aaa; }
 
         #lvl-anim {
             position: fixed;
@@ -79,14 +93,12 @@
             transform: translate(-50%, -50%) scale(0);
             font-size: 3.5rem;
             font-weight: 900;
-            font-family: sans-serif;
             pointer-events: none;
             z-index: 100;
             opacity: 0;
-            white-space: nowrap;
         }
-        .up { color: var(--accent-color); text-shadow: 0 0 15px var(--text-color); }
-        .down { color: #3366ff; text-shadow: 0 0 15px #fff; }
+        .up { color: var(--accent-color); }
+        .down { color: #3366ff; }
 
         @keyframes popUp {
             0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
@@ -99,7 +111,10 @@
     <div id="lvl-anim"></div>
     <h1>NEON REVERSI</h1>
     
-    <div id="hud">PLAYER: <span id="p-lvl">LV.1</span> | AI: <span id="ai-lvl">LV.1</span></div>
+    <div id="hud">
+        <div>PLAYER: <span id="p-lvl">LV.1</span> | AI: <span id="ai-lvl">LV.1</span></div>
+        <div id="role-info"></div>
+    </div>
     
     <div id="board"></div>
     <div id="msg">SELECT COLOR</div>
@@ -123,6 +138,7 @@
     function startGame(p) {
         playerColor = p;
         document.getElementById('menu').style.display = 'none';
+        document.getElementById('role-info').textContent = (p === 1 ? "あなたは先手(●)です" : "あなたは後手(○)です");
         initBoard();
     }
 
@@ -147,12 +163,9 @@
     function saveLevels() {
         if (pLvl > lastPLvl) showLevelAnim("レベルUP", "up");
         else if (pLvl < lastPLvl || aLvl < lastALvl) showLevelAnim("レベルDOWN", "down");
-        
-        lastPLvl = pLvl;
-        lastALvl = aLvl;
-
+        lastPLvl = pLvl; lastALvl = aLvl;
         localStorage.setItem('pLvl', pLvl);
-        localStorage.setItem('aLvl', aLvl);
+        localStorage.setItem('aiLvl', aLvl);
         localStorage.setItem('aiLossCount', aiLossCount);
         document.getElementById('p-lvl').textContent = "LV." + pLvl;
         document.getElementById('ai-lvl').textContent = "LV." + aLvl;
@@ -191,27 +204,14 @@
         let wScore = board.flat().filter(c => c === -1).length;
         let pScore = playerColor === 1 ? bScore : wScore;
         let aScore = playerColor === 1 ? wScore : bScore;
-        
         let result = pScore > aScore ? "WIN" : (aScore > pScore ? "LOST" : "DRAW");
         
-        if (result === "WIN") {
-            pLvl++; aLvl++;
-            aiLossCount = 0;
-        } else if (result === "LOST") {
-            pLvl = Math.max(1, pLvl - 1);
-            aiLossCount++;
-            if (aiLossCount >= 2) {
-                aLvl = Math.max(1, aLvl - 1);
-                aiLossCount = 0;
-            }
-        }
+        if (result === "WIN") { pLvl++; aLvl++; aiLossCount = 0; }
+        else if (result === "LOST") { pLvl = Math.max(1, pLvl - 1); aiLossCount++; if (aiLossCount >= 2) { aLvl = Math.max(1, aLvl - 1); aiLossCount = 0; } }
         
         saveLevels();
         document.getElementById('msg').textContent = `${result} (${pScore}:${aScore})`;
-        
-        setTimeout(() => {
-            document.getElementById('menu').style.display = 'flex';
-        }, 2000);
+        setTimeout(() => { document.getElementById('menu').style.display = 'flex'; }, 2000);
         return true;
     }
 
@@ -227,6 +227,7 @@
                 disc.className = 'disc ' + (board[r][c] === 1 ? 'black' : 'white');
                 cell.appendChild(disc);
             } else if(currentPlayer === playerColor && valid.some(m => m[0]===r && m[1]===c)) {
+                cell.classList.add('valid-move');
                 cell.onclick = () => {
                     place(board, r, c, playerColor);
                     currentPlayer = -currentPlayer;
@@ -245,13 +246,14 @@
             document.getElementById('msg').textContent = "PASS";
             currentPlayer = playerColor;
             render();
+            if (checkGameStatus()) return;
             return;
         }
         let choice = moves[Math.floor(Math.random() * moves.length)];
         place(board, choice[0], choice[1], -playerColor);
         currentPlayer = playerColor;
         render();
-        checkGameStatus();
+        if (checkGameStatus()) return;
     }
 </script>
 </body>
