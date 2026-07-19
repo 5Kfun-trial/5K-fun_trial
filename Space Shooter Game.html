@@ -393,11 +393,12 @@
         const DIFFICULTY_ENEMY_SPEED_STEP = 0.15;   // 敵の移動速度が難易度レベル1につき+15%（スピード感は維持）
         const DIFFICULTY_BULLET_SPEED_STEP = 0.12;  // 敵弾の速度が難易度レベル1につき+12%（スピード感は維持）
         // ★出現間隔を全体的に長めに調整（敵の物量を抑える）
-        const ENEMY_SPAWN_COOLDOWN_BASE = 190;
+        const ENEMY_SPAWN_COOLDOWN_BASE = 85;  // 初期段階からの出現間隔を短縮（旧: 190）
         const ENEMY_SPAWN_COOLDOWN_SCORE_DIVISOR = 14;
         const ENEMY_SPAWN_COOLDOWN_FLOOR_BASE = 65;
         const ENEMY_SPAWN_COOLDOWN_FLOOR_STEP = 3;
         const ENEMY_SPAWN_COOLDOWN_FLOOR_MIN = 45;
+        const MAX_ENEMIES_ON_SCREEN = 5;       // 画面上に同時出現できる敵の上限
 
         // --- 猛攻フェーズ（スコア2000点超）---
         // 敵4種すべてが左右に動きながら攻撃するようになる代わりに、
@@ -1126,7 +1127,8 @@
         // 最終ボスは消えずに残り続け、その上に雑魚敵や1〜4番目のボスが
         // 繰り返し重なって出現することで、難易度がどこまでも上がり続ける。
         const EXTRA_BOSS_IDS = ['boss1', 'boss2', 'boss3', 'boss4'];
-        const EXTRA_BOSS_START_SCORE = 15000;    // このスコアを超えたら雑魚敵が復活する
+        const REGULAR_ENEMY_UNLOCK_SCORE = 10000; // このスコアを超えたら雑魚敵(●▲■★)が背景側に復活する
+        const EXTRA_BOSS_START_SCORE = 15000;      // このスコアを超えたら周回ボスが出現し始める
         const EXTRA_BOSS_SCORE_STEP = 3000;      // 周回ボス1体ごとに必要な追加スコア
         const EXTRA_BOSS_GROWTH_PER_LAP = 0.25;  // 1周ごとにHP・報酬を+25%（難易度上昇）
 
@@ -1137,12 +1139,29 @@
         let extraBossLap = 0;             // 周回数（強化倍率に使用）
         let nextExtraBossScore = EXTRA_BOSS_START_SCORE;
 
+        // ---- ボス出現前の「赤色点滅」演出 ----
+        // ボスはいきなり出現せず、画面を数回赤く点滅させてから開始する
+        const BOSS_INTRO_DURATION = 128;  // 点滅演出の合計時間（フレーム数、60fps基準で約2.1秒）
+        const BOSS_INTRO_FLASH_INTERVAL = 16; // 点滅の切り替え間隔（この値で「数回」点滅する）
+        let bossIntroTimer = 0;           // 0より大きい間は点滅演出中（ボスはまだ動かない）
+        let bossIntroLabel = "";          // 点滅中に表示する文字（ボス名）
+        let bossIntroAction = null;       // 点滅が終わった瞬間に実行する関数（実際にボスを出す処理）
+
+        // ボスをすぐに出さず、赤色点滅演出を挟んでからactionFnを実行する
+        function beginBossIntro(label, actionFn) {
+            bossIntroTimer = BOSS_INTRO_DURATION;
+            bossIntroLabel = label;
+            bossIntroAction = actionFn;
+        }
+
         function checkBossTrigger() {
-            if (inBossFight) return;
+            if (inBossFight || bossIntroTimer > 0) return;
             for (const entry of BOSS_SCHEDULE) {
                 if (score >= entry.score && !triggeredBossScores.has(entry.score)) {
                     triggeredBossScores.add(entry.score);
-                    startBossFight(entry.id);
+                    const def = BossRegistry[entry.id];
+                    const label = def && def.name ? `WARNING: ${def.name}` : "WARNING: BOSS";
+                    beginBossIntro(label, () => startBossFight(entry.id));
                     break;
                 }
             }
@@ -1168,25 +1187,22 @@
                 nextExtraBossScore = score + EXTRA_BOSS_SCORE_STEP; // 15000点到達より前に着いた場合の保険
                 if (nextExtraBossScore < EXTRA_BOSS_START_SCORE) nextExtraBossScore = EXTRA_BOSS_START_SCORE;
             }
-
-            scoreEffects.push({
-                x: V_WIDTH / 2, y: V_HEIGHT / 2,
-                text: currentBoss.name ? `WARNING: ${currentBoss.name}` : "WARNING: BOSS",
-                color: COLOR_ACCENT, size: 14, life: 90
-            });
         }
 
         // 最終ボス出現後、スコアに応じて雑魚敵を復活させ、
         // 1〜4番目のボスを周回（boss1→2→3→4→1…）で重ねて出現させる
         function checkExtraBossTrigger() {
-            if (!finalBossActive) return;
+            if (!finalBossActive || bossIntroTimer > 0) return;
 
-            if (!regularEnemiesUnlocked && score >= EXTRA_BOSS_START_SCORE) {
+            if (!regularEnemiesUnlocked && score >= REGULAR_ENEMY_UNLOCK_SCORE) {
                 regularEnemiesUnlocked = true;
             }
 
             if (!extraBoss && score >= nextExtraBossScore) {
-                startExtraBossFight();
+                const id = EXTRA_BOSS_IDS[extraBossCycleIndex];
+                const def = BossRegistry[id];
+                const label = def && def.name ? `WARNING: ${def.name} (Lap ${extraBossLap + 1})` : "WARNING: BOSS";
+                beginBossIntro(label, () => startExtraBossFight());
             }
         }
 
@@ -1204,12 +1220,6 @@
             extraBoss.rewardScore = Math.round(def.rewardScore * growth);
             extraBoss.hp = extraBoss.maxHp;
             if (typeof extraBoss.init === "function") extraBoss.init();
-
-            scoreEffects.push({
-                x: V_WIDTH / 2, y: V_HEIGHT / 2 + 70,
-                text: extraBoss.name ? `WARNING: ${extraBoss.name} (Lap ${extraBossLap + 1})` : "WARNING: BOSS",
-                color: COLOR_ACCENT, size: 14, life: 90
-            });
         }
 
         function endBossFight(victory) {
@@ -1217,8 +1227,10 @@
             // 最終ボス(currentBoss)には触れず、周回だけを進める
             if (finalBossActive && extraBoss) {
                 if (victory) {
-                    score += extraBoss.rewardScore || 0;
+                    const reward = extraBoss.rewardScore || 0;
+                    score += reward;
                     BGM.playHighScoreFanfare();
+                    showBossDefeatBanner(extraBoss.name, reward);
                 }
                 extraBoss = null;
                 extraBossCycleIndex = (extraBossCycleIndex + 1) % EXTRA_BOSS_IDS.length;
@@ -1228,8 +1240,10 @@
             }
 
             if (victory && currentBoss) {
-                score += currentBoss.rewardScore || 0;
+                const reward = currentBoss.rewardScore || 0;
+                score += reward;
                 BGM.playHighScoreFanfare();
+                showBossDefeatBanner(currentBoss.name, reward);
             }
 
             // 最終ボス(boss5)はそのまま消えない
@@ -1237,6 +1251,20 @@
 
             currentBoss = null;
             inBossFight = false;
+        }
+
+        // ---- ボス撃破時の「倒した感」演出 ----
+        const BOSS_DEFEAT_BANNER_DURATION = 100; // 表示時間（フレーム数）
+        let bossDefeatTimer = 0;
+        let bossDefeatTitle = "";
+        let bossDefeatRewardText = "";
+        let bossDefeatScoreText = "";
+
+        function showBossDefeatBanner(bossName, reward) {
+            bossDefeatTimer = BOSS_DEFEAT_BANNER_DURATION;
+            bossDefeatTitle = bossName ? `${bossName} DEFEATED!` : "BOSS DEFEATED!";
+            bossDefeatRewardText = `+${reward}`;
+            bossDefeatScoreText = `SCORE ${score}`;
         }
 
         function initGame() {
@@ -1264,6 +1292,10 @@
             extraBossCycleIndex = 0;
             extraBossLap = 0;
             nextExtraBossScore = EXTRA_BOSS_START_SCORE;
+            bossIntroTimer = 0;
+            bossIntroLabel = "";
+            bossIntroAction = null;
+            bossDefeatTimer = 0;
             pauseOverlay.style.display = "none";
             stopBtn.textContent = "STOP";
 
@@ -1816,7 +1848,71 @@
                 }
             }
 
+            renderBossIntroFlash();
+            renderBossDefeatBanner();
+
             ctx.shadowBlur = 0;
+        }
+
+        // ボスを倒した瞬間に、獲得スコアと合計スコアを大きく表示して「倒した感」を出す演出
+        function renderBossDefeatBanner() {
+            if (bossDefeatTimer <= 0) return;
+
+            // 出現時にふわっと大きくなり、消える直前にフェードアウトする
+            const t = 1 - (bossDefeatTimer / BOSS_DEFEAT_BANNER_DURATION);
+            const scale = t < 0.15 ? 0.7 + (t / 0.15) * 0.3 : 1.0;
+            const alpha = bossDefeatTimer < 20 ? bossDefeatTimer / 20 : 1.0;
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.translate(V_WIDTH / 2, V_HEIGHT / 2 - 20);
+            ctx.scale(scale, scale);
+
+            ctx.font = "bold 22px Courier New";
+            ctx.fillStyle = "#ffe066";
+            ctx.shadowColor = "#ffe066";
+            ctx.shadowBlur = 14;
+            ctx.fillText(bossDefeatTitle, 0, -34);
+
+            ctx.font = "bold 30px Courier New";
+            ctx.fillStyle = "#66ffcc";
+            ctx.shadowColor = "#66ffcc";
+            ctx.shadowBlur = 14;
+            ctx.fillText(bossDefeatRewardText, 0, 4);
+
+            ctx.font = "bold 18px Courier New";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 6;
+            ctx.fillText(bossDefeatScoreText, 0, 38);
+
+            ctx.restore();
+        }
+
+        // ボス出現前の赤色点滅演出。一定間隔でON/OFFを切り替えることで
+        // 画面が数回赤く点滅しているように見せる。
+        function renderBossIntroFlash() {
+            if (bossIntroTimer <= 0) return;
+
+            const elapsed = BOSS_INTRO_DURATION - bossIntroTimer;
+            const flashOn = Math.floor(elapsed / BOSS_INTRO_FLASH_INTERVAL) % 2 === 0;
+            if (!flashOn) return;
+
+            ctx.save();
+            ctx.fillStyle = "rgba(255, 0, 0, 0.35)";
+            ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+
+            if (bossIntroLabel) {
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.font = "bold 20px Courier New";
+                ctx.fillStyle = "#ffffff";
+                ctx.shadowColor = "#ff2222";
+                ctx.shadowBlur = 10;
+                ctx.fillText(bossIntroLabel, V_WIDTH / 2, V_HEIGHT / 2);
+            }
+            ctx.restore();
         }
 
 
@@ -1878,6 +1974,13 @@
         function updateEnemySpawning() {
             enemySpawnCooldown -= dt;
             if (enemySpawnCooldown <= 0) {
+                // 画面上の敵が上限(5体)に達している間は、出現順・出現ロジックは変えずに
+                // 少し待って再チェックするだけにする（枠が空き次第すぐ補充される）
+                if (enemies.length >= MAX_ENEMIES_ON_SCREEN) {
+                    enemySpawnCooldown = 10;
+                    return;
+                }
+
                 spawnEnemy();
 
                 // 1000点ごとに、スポーン間隔の下限を引き下げて出現頻度を向上
@@ -1915,8 +2018,22 @@
             updateInvincibility();
             updatePlayerShooting();
 
+            // ボス出現前の赤色点滅演出：この間は敵の出現トリガー判定を止めて待つ
+            if (bossIntroTimer > 0) {
+                bossIntroTimer -= dt;
+                if (bossIntroTimer <= 0) {
+                    bossIntroTimer = 0;
+                    const action = bossIntroAction;
+                    bossIntroAction = null;
+                    bossIntroLabel = "";
+                    if (action) action();
+                }
+            }
+
             checkBossTrigger();
             checkExtraBossTrigger();
+
+            if (bossDefeatTimer > 0) bossDefeatTimer -= dt;
 
             if (inBossFight) {
                 if (currentBoss && typeof currentBoss.update === "function") {
