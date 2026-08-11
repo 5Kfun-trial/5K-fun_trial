@@ -488,10 +488,23 @@
     }
 
     // ================= RENDER =================
+    let resizeRetryCount = 0;
     function resizeCanvas() {
         const dpr = window.devicePixelRatio || 1;
         const areaW = gameArea.clientWidth;
         const areaH = gameArea.clientHeight;
+
+        // On some mobile browsers the game-area hasn't been laid out yet on the very
+        // first call (0 width/height), which used to leave the board stuck at the
+        // minimum 8px block size (i.e. effectively broken). If that happens, retry
+        // on the next animation frame a few times until layout has settled.
+        if ((areaW < 20 || areaH < 20) && resizeRetryCount < 30) {
+            resizeRetryCount++;
+            requestAnimationFrame(resizeCanvas);
+            return;
+        }
+        resizeRetryCount = 0;
+
         const bw = Math.floor(areaW / COLS);
         const bh = Math.floor(areaH / ROWS);
         BLOCK = Math.max(8, Math.min(bw, bh));
@@ -775,6 +788,26 @@
     if (window.ResizeObserver) {
         new ResizeObserver(() => { resizeCanvas(); }).observe(gameArea);
     }
+    window.addEventListener('load', () => { resizeCanvas(); });
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => { resizeCanvas(); }).catch(() => {});
+    }
+
+    // On-screen error display: if anything throws at runtime, show the message
+    // directly on the page (instead of it only being visible in a desktop
+    // console) so a problem on a phone can actually be read and reported.
+    window.addEventListener('error', (e) => {
+        try {
+            let box = document.getElementById('js-error-box');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'js-error-box';
+                box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#3a0000;color:#ff9a9a;font:11px monospace;padding:8px;white-space:pre-wrap;max-height:40vh;overflow:auto;border-top:2px solid #ff2e92;';
+                document.body.appendChild(box);
+            }
+            box.textContent = 'JS ERROR: ' + (e.message || e.error) + '\n' + (e.filename ? (e.filename + ':' + e.lineno) : '');
+        } catch (err) { /* ignore */ }
+    });
 
     // initial idle board so it's not blank behind the start overlay
     board = makeBoard();
