@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ELEMENT TACTICS - NEON EDITION</title>
     <style>
         :root { 
@@ -32,13 +32,15 @@
         body { 
             margin: 0;
             padding: 6px;
+            padding-bottom: calc(6px + env(safe-area-inset-bottom));
             background-color: var(--bg-color); 
             color: var(--text-color); 
             font-family: 'Courier New', monospace; 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            height: 100vh;
+            height: 100vh;   /* dvh未対応ブラウザ向けフォールバック */
+            height: 100dvh;  /* モバイルのアドレスバー等を含む実際の表示領域に追従(はみ出し防止) */
             overflow: hidden;
             position: fixed;
             width: 100%;
@@ -76,7 +78,8 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: center;
+            gap: clamp(4px, 1.4vh, 14px);
             width: 97vw;
             max-width: 560px;
             padding: 4px 0;
