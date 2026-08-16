@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ELEMENT TACTICS - NEON EDITION</title>
+    <style>
+        :root { 
+            --bg-color: #010402; 
+            --text-color: #33ff66; 
+            --accent-color: #ff0055; 
+            --glow: 0 0 10px;
+        }
+        
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 4px 4px;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        body { 
+            margin: 0;
+            padding: 6px;
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Courier New', monospace; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            text-shadow: var(--glow) var(--text-color);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        h1 {
+            margin: 0;
+            font-size: clamp(1.15rem, 5vw, 1.7rem);
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px var(--text-color);
+        }
+
+        .sound-toggle {
+            background: #030d06;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 4px 9px;
+            font-size: clamp(0.7rem, 2.8vw, 0.95rem);
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+
+        .game-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 97vw;
+            max-width: 560px;
+            padding: 4px 0;
+            position: relative;
+        }
+
+        .player-section {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: clamp(0.85rem, 3.3vw, 1.1rem);
+            padding: 0 4px;
+        }
+        .element-counts {
+            display: flex;
+            gap: 5px;
+            font-size: clamp(0.8rem, 3vw, 1.02rem);
+        }
+        .ec-item {
+            background: #051a0a;
+            border: 1px solid var(--text-color);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .hand-result-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #030d06;
+            border-radius: 6px;
+            padding: 5px;
+            min-height: clamp(78px, 14vh, 108px);
+            border: 2px solid var(--text-color);
+            box-shadow: inset 0 0 8px rgba(51, 255, 102, 0.2);
+        }
+
+        .hand-container {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding: 2px;
+            flex: 1;
+        }
+
+        .result-display {
+            font-weight: bold;
+            color: var(--accent-color);
+            text-align: right;
+            min-width: clamp(92px, 22vw, 132px);
+            line-height: 1.15;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            padding-right: 4px;
+            text-shadow: 0 0 8px var(--accent-color);
+        }
+        .result-display .calc-text {
+            font-size: clamp(0.7rem, 2.7vw, 0.88rem);
+            color: #88ffaa;
+        }
+        .result-display .total-text {
+            font-size: clamp(1.3rem, 4.8vw, 1.75rem);
+            margin-top: 2px;
+        }
+
+        .card-back {
+            min-width: clamp(54px, 14vw, 78px);
+            width: clamp(54px, 14vw, 78px);
+            height: clamp(76px, 19.5vw, 110px);
+            background: #051a0a;
+            border: 2px solid #145222;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1.1rem, 4.2vw, 1.6rem);
+            color: #145222;
+            flex-shrink: 0;
+        }
+        
+        .card {
+            min-width: clamp(56px, 14.5vw, 80px);
+            width: clamp(56px, 14.5vw, 80px);
+            height: clamp(78px, 20vw, 112px);
+            background: #020804;
+            color: var(--text-color);
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(51,255,102,0.4);
+            transition: transform 0.1s;
+            flex-shrink: 0;
+            border: 2px solid var(--text-color);
+        }
+        .card:active { transform: scale(0.95); }
+        .card.selected { transform: translateY(-4px); border-color: var(--accent-color); box-shadow: 0 0 12px var(--accent-color); }
+        .card.disabled { opacity: 1 !important; cursor: not-allowed; pointer-events: none; }
+        .card-top { font-size: clamp(0.8rem, 3.1vw, 1.05rem); line-height: 1; }
+        .card-center { font-size: clamp(1.5rem, 5.8vw, 2.15rem); text-align: center; margin: auto 0;}
+        
+        .suit-heart { color: #ff3366; text-shadow: 0 0 8px #ff3366; }   /* 火 */
+        .suit-spade { color: #33ccff; text-shadow: 0 0 8px #33ccff; }   /* 風 */
+        .suit-club { color: #33ff66; text-shadow: 0 0 8px #33ff66; }    /* 地 */
+        .suit-diamond { color: #3399ff; text-shadow: 0 0 8px #3399ff; } /* 水 */
+        
+        .center-battle-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            width: 100%;
+        }
+
+        .central-score-banner {
+            background: #030d06;
+            border: 2px solid var(--text-color);
+            border-radius: 6px;
+            padding: 5px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            font-size: clamp(0.95rem, 3.6vw, 1.25rem);
+            width: 100%;
+            box-shadow: 0 0 8px rgba(51,255,102,0.2);
+        }
+        .score-side { font-weight: bold; }
+        .score-val { font-size: clamp(1.15rem, 4.5vw, 1.55rem); }
+        .score-vs { color: var(--accent-color); font-size: clamp(0.85rem, 3.1vw, 1.05rem); }
+
+        .arena-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            height: clamp(92px, 15vh, 128px);
+            width: 100%;
+        }
+        .arena {
+            flex: 1;
+            background: #030d06;
+            border-radius: 6px;
+            border: 2px dashed var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2px;
+            position: relative;
+        }
+        .arena-label {
+            position: absolute;
+            font-size: clamp(0.7rem, 2.6vw, 0.88rem);
+            color: #88ffaa;
+            top: 3px;
+            left: 5px;
+        }
+        .arena .card {
+            margin-top: 8px;
+        }
+
+        /* 親宣言を目立たせるための巨大＆ネオン演出スタイル */
+        .message-box {
+            text-align: center;
+            padding: 8px;
+            background: #051a0a;
+            border: 3px solid var(--accent-color);
+            border-radius: 6px;
+            font-size: clamp(1.1rem, 4.3vw, 1.5rem);
+            font-weight: bold;
+            color: var(--accent-color);
+            min-height: clamp(58px, 9.5vh, 80px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            box-shadow: 0 0 15px var(--accent-color), inset 0 0 10px rgba(255,0,85,0.3);
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px var(--accent-color);
+        }
+        .message-box .sub-msg {
+            font-size: clamp(0.78rem, 3vw, 1rem);
+            color: var(--text-color);
+            text-shadow: 0 0 5px var(--text-color);
+            margin-top: 3px;
+        }
+
+        .btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            padding: 9px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: clamp(0.95rem, 3.6vw, 1.2rem);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--text-color);
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 8px var(--text-color);
+            transition: 0.2s;
+            width: 100%;
+        }
+        .btn:hover, .btn:active { background: var(--text-color); color: #000; }
+        .hidden { display: none !important; }
+
+        .text-cpu { color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); }
+        .text-player { color: var(--text-color); }
+
+        #dynamic-announcement {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: clamp(3rem, 13.5vw, 5.2rem);
+            font-weight: 900;
+            color: var(--accent-color);
+            text-shadow: 0 0 20px var(--accent-color), 0 0 40px var(--accent-color);
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+        }
+
+        @keyframes popZoom {
+            0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; text-shadow: 0 0 30px var(--accent-color), 0 0 60px var(--accent-color); }
+            70% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0; }
+        }
+
+        .affinity-panel {
+            background: #030d06;
+            padding: 7px 10px;
+            border: 2px solid var(--text-color);
+            border-radius: 6px;
+            text-align: center;
+            width: 97vw;
+            max-width: 560px;
+            flex-shrink: 0;
+            box-shadow: 0 0 10px rgba(51,255,102,0.3);
+        }
+        .affinity-title {
+            font-size: clamp(0.75rem, 2.9vw, 0.95rem);
+            color: #88ffaa;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .affinity-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            font-size: clamp(0.85rem, 3.3vw, 1.08rem);
+            font-weight: bold;
+        }
+        .aff-item { 
+            padding: 3px 6px; 
+            border-radius: 3px; 
+            background: #051a0a; 
+            border: 1px solid currentColor;
+        }
+    </style>
+</head>
+<body onclick="handleGlobalClick(event)">
+
+    <header>
+        <h1>ELEMENT TACTICS</h1>
+        <button class="sound-toggle" id="sound-btn" onclick="event.stopPropagation(); toggleSound();">SOUND: OFF</button>
+    </header>
+
+    <div class="game-container">
+        <div id="dynamic-announcement"></div>
+
+        <div class="player-section">
+            <div class="player-header">
+                <span class="text-cpu">CPU [親] <span id="con-role-status" style="font-size:0.82em;">[親権保持]</span></span>
+                <div class="element-counts" id="con-counts"></div>
+            </div>
+            <div class="hand-result-container">
+                <div class="hand-container" id="con-hand-display"></div>
+                <div id="con-result" class="result-display hidden"></div>
+            </div>
+        </div>
+
+        <div class="center-battle-area">
+            <div class="central-score-banner">
+                <div class="score-side">P [子] <span id="p-wins" class="score-val">0</span>勝</div>
+                <div class="score-vs">VS</div>
+                <div class="score-side"><span id="c-wins" class="score-val">0</span>勝 CPU [親]</div>
+            </div>
+
+            <div class="arena-container">
+                <div class="arena" id="con-arena">
+                    <span class="arena-label">CPU ZONE</span>
+                </div>
+                <div class="arena" id="player-arena">
+                    <span class="arena-label">PLAYER ZONE</span>
+                </div>
+            </div>
+            
+            <!-- 親宣言を目立たせるメッセージボックス -->
+            <div class="message-box" id="message">
+                <span id="msg-main">親(CPU)宣言: 待機中</span>
+                <span class="sub-msg" id="msg-sub">カードを選択せよ</span>
+            </div>
+            
+            <button id="action-btn" class="btn hidden" onclick="event.stopPropagation(); nextStep();">Tap the screen</button>
+        </div>
+
+        <div class="player-section">
+            <div class="player-header">
+                <span class="text-player">PLAYER [子]</span>
+                <div class="element-counts" id="player-counts"></div>
+            </div>
+            <div class="hand-result-container">
+                <div class="hand-container" id="player-hand"></div>
+                <div id="player-result" class="result-display hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="affinity-panel">
+        <span class="affinity-title">[ BATTLE RULE : マーク勝利+6PTS / 数字勝利+6PTS ]</span>
+        <div class="affinity-flow">
+            <span class="aff-item suit-diamond">♦水</span><span>＞</span>
+            <span class="aff-item suit-heart">♥火</span><span>＞</span>
+            <span class="aff-item suit-club">♣地</span><span>＞</span>
+            <span class="aff-item suit-diamond">♦水</span>
+            <span style="color:#666; font-size:0.65rem; margin-left:2px;">(♠風=中立)</span>
+        </div>
+    </div>
+
+<script>
+    let audioCtx = null;
+    let soundEnabled = false;
+    let bgmInterval = null;
+    let stepCounter = 0;
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function toggleSound() {
+        initAudio();
+        soundEnabled = !soundEnabled;
+        const btn = document.getElementById('sound-btn');
+        if (soundEnabled) {
+            btn.innerText = "SOUND: ON";
+            startBGM();
+        } else {
+            btn.innerText = "SOUND: OFF";
+            stopBGM();
+        }
+    }
+
+    function playSound(type) {
+        if (!soundEnabled || !audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        if (type === 'select') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.06);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
+            osc.start(now);
+            osc.stop(now + 0.06);
+        } else if (type === 'deploy') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.linearRampToValueAtTime(50, now + 0.2);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        } else if (type === 'win') {
+            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + i * 0.08);
+                gain.gain.setValueAtTime(0.15, now + i * 0.08);
+                gain.gain.linearRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.2);
+            });
+        } else if (type === 'lose') {
+            [300, 240, 180, 120].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, now + i * 0.1);
+                gain.gain.setValueAtTime(0.2, now + i * 0.1);
+                gain.gain.linearRampToValueAtTime(0.001, now + i * 0.1 + 0.25);
+                osc.start(now + i * 0.1);
+                osc.stop(now + i * 0.1 + 0.25);
+            });
+        } else if (type === 'tap') {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.05);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        }
+    }
+
+    function startBGM() {
+        stopBGM();
+        const tensionNotes = [220, 233.08, 261.63, 233.08, 196.00, 233.08, 220, 164.81];
+        
+        bgmInterval = setInterval(() => {
+            if (!soundEnabled || !audioCtx) return;
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(tensionNotes[stepCounter % tensionNotes.length], now);
+            
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.18);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.18);
+
+            if (stepCounter % 2 !== 0) {
+                const noise = audioCtx.createOscillator();
+                const nGain = audioCtx.createGain();
+                noise.type = 'square';
+                noise.frequency.setValueAtTime(1200, now);
+                nGain.gain.setValueAtTime(0.015, now);
+                nGain.gain.linearRampToValueAtTime(0.001, now + 0.04);
+                noise.connect(nGain);
+                nGain.connect(audioCtx.destination);
+                noise.start(now);
+                noise.stop(now + 0.04);
+            }
+
+            stepCounter++;
+        }, 180);
+    }
+
+    function stopBGM() {
+        if (bgmInterval) {
+            clearInterval(bgmInterval);
+            bgmInterval = null;
+        }
+        stepCounter = 0;
+    }
+
+    const suitData = {
+        '♥': { symbol: '♥', name: '火', class: 'suit-heart' },
+        '♠': { symbol: '♠', name: '風', class: 'suit-spade' },
+        '♣': { symbol: '♣', name: '地', class: 'suit-club' },
+        '♦': { symbol: '♦', name: '水', class: 'suit-diamond' }
+    };
+    const suitsSymbols = ['♥', '♠', '♣', '♦'];
+    const NUM_CARDS_IN_HAND = 5;
+    const WINS_TO_TARGET = 3;
+
+    let playerWins = 0;
+    let conWins = 0;
+    let playerHand = [];
+    let conHand = [];
+    let selectedIndex = null;
+    let gameState = 'SELECT'; 
+    let currentPCard = null;
+    let currentCCard = null;
+    let declaredSuit = '';
+    let roundCount = 0;
+
+    function initGame() {
+        initAudio();
+        playerWins = 0;
+        conWins = 0;
+        roundCount = 0;
+        startNewRound();
+    }
+
+    function createDeck() {
+        let deck = [];
+        for (let s of suitsSymbols) {
+            for (let n = 1; n <= 13; n++) {
+                deck.push({ suit: suitData[s], value: n });
+            }
+        }
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        return deck;
+    }
+
+    function cardLabel(value) {
+        if (value === 11) return 'J';
+        if (value === 12) return 'Q';
+        if (value === 13) return 'K';
+        return value;
+    }
+
+    function setMessage(mainText, subText) {
+        document.getElementById('msg-main').innerHTML = mainText;
+        document.getElementById('msg-sub').innerHTML = subText;
+    }
+
+    function showDynamicAnnouncement(text) {
+        const anim = document.getElementById('dynamic-announcement');
+        anim.textContent = text;
+        anim.style.animation = 'none';
+        anim.offsetHeight;
+        anim.style.animation = 'popZoom 1.2s ease-out forwards';
+    }
+
+    function startNewRound() {
+        if (playerWins === 0 && conWins === 0) {
+            let deck = createDeck();
+            playerHand = deck.splice(0, NUM_CARDS_IN_HAND);
+            conHand = deck.splice(0, NUM_CARDS_IN_HAND);
+        }
+
+        roundCount++;
+        selectedIndex = null;
+        gameState = 'SELECT';
+        currentPCard = null;
+        currentCCard = null;
+
+        // 親（CPU）が最初のマークを宣言（数字は出さない）
+        const randomSuitSymbol = suitsSymbols[Math.floor(Math.random() * suitsSymbols.length)];
+        declaredSuit = randomSuitSymbol;
+        let suitNameJp = suitData[randomSuitSymbol].name;
+
+        document.getElementById('action-btn').classList.add('hidden');
+        document.getElementById('con-arena').innerHTML = '<span class="arena-label">CPU ZONE</span>';
+        document.getElementById('player-arena').innerHTML = '<span class="arena-label">PLAYER ZONE</span>';
+        
+        hideResults();
+        
+        // 親のマーク宣言を大きく目立たせて表示
+        setMessage(`👑 親(CPU) 宣言: 【 ${suitNameJp} (${randomSuitSymbol}) 】`, "相手の数字を読み、カードを選択せよ");
+        
+        // 親権の揺らぎや保持のステータス演出
+        const roleStatusEl = document.getElementById('con-role-status');
+        if (roundCount > 1) {
+            roleStatusEl.innerText = "[親権揺らぎ中]";
+        } else {
+            roleStatusEl.innerText = "[親権保持/BONUS+3]";
+        }
+
+        renderHands();
+        updateScoreBoard();
+    }
+
+    function getSuitCounts(hand) {
+        const counts = { '♥': 0, '♠': 0, '♣': 0, '♦': 0 };
+        hand.forEach(card => counts[card.suit.symbol]++);
+        return counts;
+    }
+
+    function renderHands() {
+        const pHtml = document.getElementById('player-hand');
+        pHtml.innerHTML = '';
+        playerHand.forEach((card, index) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = `card ${card.suit.class} ${selectedIndex === index ? 'selected' : ''}`;
+            if (gameState !== 'SELECT') cardEl.classList.add('disabled');
+            
+            cardEl.innerHTML = `
+                <div class="card-top">${cardLabel(card.value)}</div>
+                <div class="card-center">${card.suit.symbol}</div>
+                <div class="card-top" style="transform: rotate(180deg);">${cardLabel(card.value)}</div>
+            `;
+            
+            if (gameState === 'SELECT') {
+                cardEl.onclick = (e) => {
+                    e.stopPropagation();
+                    playSound('select');
+                    selectCard(index);
+                };
+            }
+            pHtml.appendChild(cardEl);
+        });
+
+        const pCounts = getSuitCounts(playerHand);
+        document.getElementById('player-counts').innerHTML = `
+            <span class="ec-item">♥${pCounts['♥']}</span>
+            <span class="ec-item">♠${pCounts['♠']}</span>
+            <span class="ec-item">♣${pCounts['♣']}</span>
+            <span class="ec-item">♦${pCounts['♦']}</span>
+        `;
+
+        const cHtml = document.getElementById('con-hand-display');
+        cHtml.innerHTML = '';
+        conHand.forEach(() => {
+            const backEl = document.createElement('div');
+            backEl.className = 'card-back';
+            backEl.innerHTML = '🂠';
+            cHtml.appendChild(backEl);
+        });
+
+        const cCounts = getSuitCounts(conHand);
+        document.getElementById('con-counts').innerHTML = `
+            <span class="ec-item">♥${cCounts['♥']}</span>
+            <span class="ec-item">♠${cCounts['♠']}</span>
+            <span class="ec-item">♣${cCounts['♣']}</span>
+            <span class="ec-item">♦${cCounts['♦']}</span>
+        `;
+    }
+
+    function selectCard(index) {
+        if (gameState !== 'SELECT') return;
+        selectedIndex = index;
+        gameState = 'RESULT';
+
+        currentPCard = playerHand[selectedIndex];
+        const conIndex = Math.floor(Math.random() * conHand.length);
+        currentCCard = conHand[conIndex];
+
+        playerHand.splice(selectedIndex, 1);
+        conHand.splice(conIndex, 1);
+
+        playSound('deploy');
+        showCardInArena('player-arena', currentPCard);
+        showCardInArena('con-arena', currentCCard);
+
+        renderHands();
+        calculateAndShowResults();
+    }
+
+    function showCardInArena(arenaId, card) {
+        const arena = document.getElementById(arenaId);
+        const cardEl = document.createElement('div');
+        cardEl.className = `card ${card.suit.class} disabled`;
+        cardEl.style.width = 'clamp(62px, 16.5vw, 92px)';
+        cardEl.style.height = 'clamp(86px, 22.5vw, 128px)';
+        cardEl.style.margin = '0';
+        cardEl.innerHTML = `
+            <div class="card-top">${cardLabel(card.value)}</div>
+            <div class="card-center" style="font-size: clamp(1.7rem, 6.6vw, 2.4rem);">${card.suit.symbol}</div>
+            <div class="card-top" style="transform: rotate(180deg);">${cardLabel(card.value)}</div>
+        `;
+        arena.appendChild(cardEl);
+    }
+
+    function calculateAndShowResults() {
+        let pSuit = currentPCard.suit.symbol;
+        let cSuit = currentCCard.suit.symbol;
+
+        let markWinner = 'DRAW';
+        let pMarkWin = false;
+        let cMarkWin = false;
+
+        if ((pSuit === '♦' && cSuit === '♥') || (pSuit === '♥' && cSuit === '♣') || (pSuit === '♣' && cSuit === '♦')) {
+            pMarkWin = true;
+        } else if ((cSuit === '♦' && pSuit === '♥') || (cSuit === '♥' && pSuit === '♣') || (cSuit === '♣' && pSuit === '♦')) {
+            cMarkWin = true;
+        }
+
+        let pPoints = 0;
+        let cPoints = 0;
+
+        if (pMarkWin) {
+            pPoints += 6;
+        } else if (cMarkWin) {
+            cPoints += 6;
+        }
+
+        let pNumWin = false;
+        let cNumWin = false;
+
+        if (currentPCard.value > currentCCard.value) {
+            pNumWin = true;
+            pPoints += 6;
+        } else if (currentCCard.value > currentPCard.value) {
+            cNumWin = true;
+            cPoints += 6;
+        }
+
+        let cBonusApplied = false;
+        if (roundCount === 1) {
+            cPoints += 3;
+            cBonusApplied = true;
+        }
+
+        const pResultEl = document.getElementById('player-result');
+        pResultEl.innerHTML = `<div class="calc-text">マーク:${pMarkWin?'+6':'0'} 数字:${pNumWin?'+6':'0'}</div>` +
+                              `<div class="total-text">= ${pPoints}PT</div>`;
+        pResultEl.classList.remove('hidden');
+
+        const cResultEl = document.getElementById('con-result');
+        cResultEl.innerHTML = `<div class="calc-text">マーク:${cMarkWin?'+6':'0'} 数字:${cNumWin?'+6':'0'}${cBonusApplied? ' 親+3':''}</div>` +
+                              `<div class="total-text">= ${cPoints}PT</div>`;
+        cResultEl.classList.remove('hidden');
+
+        let roundWinner = '';
+        if (pPoints > cPoints) {
+            roundWinner = 'PLAYER';
+            playerWins++;
+        } else if (cPoints > pPoints) {
+            roundWinner = 'CON';
+            conWins++;
+        } else {
+            roundWinner = 'DRAW';
+        }
+
+        if (roundWinner === 'PLAYER') {
+            setMessage("PLAYER WIN!", "Tap to continue");
+        } else if (roundWinner === 'CON') {
+            setMessage("CPU(親) WIN...", "Tap to continue");
+        } else {
+            setMessage("DRAW MATCH", "Tap to continue");
+        }
+
+        updateScoreBoard();
+        checkGameProgress();
+    }
+
+    function updateScoreBoard() {
+        document.getElementById('p-wins').innerText = playerWins;
+        document.getElementById('c-wins').innerText = conWins;
+    }
+
+    function hideResults() {
+        document.getElementById('player-result').classList.add('hidden');
+        document.getElementById('con-result').classList.add('hidden');
+        document.getElementById('action-btn').classList.add('hidden');
+    }
+
+    function checkGameProgress() {
+        const actionBtn = document.getElementById('action-btn');
+        
+        if (playerWins >= WINS_TO_TARGET || conWins >= WINS_TO_TARGET || playerHand.length === 0) {
+            gameState = 'GAME_OVER';
+            setTimeout(() => {
+                if (playerWins > conWins) {
+                    setMessage("★ TOTAL VICTORY! ★", "Tap to restart");
+                    showDynamicAnnouncement("WIN");
+                    playSound('win');
+                } else if (conWins > playerWins) {
+                    setMessage("☠ TOTAL DEFEAT... ☠", "Tap to restart");
+                    showDynamicAnnouncement("LOST");
+                    playSound('lose');
+                } else {
+                    setMessage("=== DRAW MATCH ===", "Tap to restart");
+                    showDynamicAnnouncement("DRAW");
+                    playSound('select');
+                }
+                actionBtn.innerText = "Tap the screen";
+                actionBtn.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    playSound('tap');
+                    initGame(); 
+                };
+                actionBtn.classList.remove('hidden');
+            }, 500);
+        } else {
+            gameState = 'TURN_END';
+            actionBtn.innerText = "Tap the screen";
+            actionBtn.onclick = (e) => { 
+                e.stopPropagation(); 
+                playSound('tap');
+                nextStep(); 
+            };
+            actionBtn.classList.remove('hidden');
+        }
+    }
+
+    function nextStep() {
+        if (gameState === 'TURN_END') {
+            startNewRound();
+        }
+    }
+
+    function handleGlobalClick(e) {
+        initAudio();
+        if (gameState === 'TURN_END') {
+            playSound('tap');
+            nextStep();
+        } else if (gameState === 'GAME_OVER') {
+            playSound('tap');
+            initGame();
+        }
+    }
+
+    initGame();
+</script>
+</body>
+</html>

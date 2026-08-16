@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>小銭積みゲーム</title>
+<style>
+  :root{
+    /* ---- レトロ・アンバーCRT テーマ(ベースカラー: 茶色) ---- */
+    --retro-bg-1:#241608;
+    --retro-bg-2:#0d0803;
+    --panel-bg:#2a1c0f;
+    --panel-border:#7a5326;
+    --accent-amber:#e8a13c;
+    --accent-amber-dim:#b9812f;
+    --accent-green:#5fd97a;
+    --accent-gold:#ffcf6b;
+    --accent-red:#ff5a3c;
+    --accent-cyan:#5fd0d9;
+    --text-main:#f3dcb0;
+    --text-sub:#a9825a;
+    --stage-bg-1:#241a0f;
+    --stage-bg-2:#120c06;
+    --wall-color:#6b4a24;
+    --deadline-color:#ff5a3c;
+    --glow:0 0 8px;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:
+      radial-gradient(circle at 50% -10%, #3a2611 0%, var(--retro-bg-1) 45%, var(--retro-bg-2) 100%);
+    font-family:"Courier New","MS Gothic",monospace;
+    color:var(--text-main);
+  }
+  body{
+    position:relative;
+    overflow-x:hidden;
+  }
+  /* CRTスキャンライン / ドットパターン(レトロ質感) */
+  body::before{
+    content:"";
+    position:fixed;
+    top:0; left:0; width:100%; height:100%;
+    background-image:radial-gradient(rgba(255,205,120,0.05) 1px, transparent 1px);
+    background-size:3px 3px;
+    pointer-events:none;
+    z-index:999;
+  }
+  body::after{
+    content:"";
+    position:fixed;
+    top:0; left:0; width:100%; height:100%;
+    background:repeating-linear-gradient(
+      0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px,
+      transparent 1px, transparent 3px
+    );
+    pointer-events:none;
+    z-index:999;
+    mix-blend-mode:multiply;
+  }
+
+  #page-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-start;
+    justify-content:center;
+    gap:16px;
+    min-height:100vh;
+    padding:16px 10px;
+  }
+
+  #phone{
+    position:relative;
+    width:100%;
+    max-width:430px;
+    height:calc(100vh - 32px);
+    max-height:900px;
+    margin:0 auto;
+    background:linear-gradient(180deg,#2c1c0e,#150d05);
+    display:flex;
+    flex-direction:column;
+    box-shadow:
+      0 0 0 2px #4a3216,
+      0 0 0 5px #1a1006,
+      0 0 30px rgba(232,161,60,.12),
+      0 10px 40px rgba(0,0,0,.7);
+    overflow:hidden;
+    border-radius:14px;
+    border:1px solid #6b4a24;
+  }
+
+  /* ---------- header ---------- */
+  #header{
+    padding:10px 14px 6px;
+    flex-shrink:0;
+  }
+  .title-row{
+    text-align:center;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:5px;
+    color:var(--accent-amber);
+    text-shadow:var(--glow) var(--accent-amber-dim);
+    margin-bottom:8px;
+  }
+  .top-panels{
+    display:flex;
+    gap:8px;
+  }
+  .panel{
+    flex:1;
+    background:var(--panel-bg);
+    border-radius:4px;
+    padding:8px 10px;
+    border:1px solid var(--panel-border);
+  }
+  #holder-panel{
+    border:1px solid var(--accent-green);
+    box-shadow:0 0 10px rgba(95,217,122,.25) inset, 0 0 6px rgba(95,217,122,.25);
+    text-align:center;
+  }
+  #holder-panel .h-label{
+    font-size:10.5px;
+    color:var(--accent-green);
+    text-shadow:var(--glow) rgba(95,217,122,.5);
+    letter-spacing:1px;
+    white-space:nowrap;
+  }
+  #holder-panel .h-value{
+    font-size:24px;
+    font-weight:700;
+    color:var(--accent-green);
+    text-shadow:var(--glow) rgba(95,217,122,.6);
+    line-height:1.25;
+  }
+  #holder-panel .h-value span{ font-size:12px; margin-left:2px; color:#9becab;}
+  @keyframes holderPulse{
+    0%{ box-shadow:0 0 0 rgba(95,217,122,0) inset, 0 0 0 rgba(95,217,122,0); }
+    35%{ box-shadow:0 0 22px 4px rgba(95,217,122,.7) inset, 0 0 22px rgba(95,217,122,.7); }
+    100%{ box-shadow:0 0 0 rgba(95,217,122,0) inset, 0 0 0 rgba(95,217,122,0); }
+  }
+  #holder-panel.pulse{ animation: holderPulse .6s ease-out; }
+  #score-panel{
+    text-align:center;
+    border:1px solid var(--accent-amber);
+    box-shadow:0 0 6px rgba(232,161,60,.25);
+  }
+  #score-panel .s-label{
+    font-size:10.5px; color:var(--accent-amber); letter-spacing:1px;
+    text-shadow:var(--glow) rgba(232,161,60,.4);
+  }
+  #score-panel .s-value{
+    font-size:24px; font-weight:700; color:var(--accent-gold); line-height:1.25;
+    text-shadow:var(--glow) rgba(255,207,107,.5);
+  }
+  #score-panel .s-value span{ font-size:12px; margin-left:2px; color:#f5d896;}
+
+  #coin-grid{
+    margin-top:8px;
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:5px;
+  }
+  .coin-count-cell{
+    background:var(--panel-bg);
+    border:1px solid var(--panel-border);
+    border-radius:4px;
+    padding:5px 2px 4px;
+    text-align:center;
+  }
+  .ccc-dot{
+    width:16px;height:16px;border-radius:50%;
+    margin:0 auto 3px;
+    border:1px solid rgba(0,0,0,.35);
+    box-shadow:0 0 4px rgba(255,255,255,.15) inset;
+  }
+  .ccc-label{ font-size:8.5px; color:var(--text-sub); }
+  .ccc-num{ font-size:13px; font-weight:700; color:var(--text-main); }
+
+  /* ---------- stage ---------- */
+  #stage-wrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:0;
+    padding:8px 0;
+    position:relative;
+  }
+  #stage-frame{
+    position:relative;
+    border-radius:4px;
+    box-shadow:0 0 0 2px #513615, 0 6px 20px rgba(0,0,0,.6);
+  }
+  canvas#stage{
+    display:block;
+    border-radius:4px;
+    touch-action:none;
+    cursor:pointer;
+  }
+
+  #next-hint{
+    position:absolute;
+    top:4px; left:0; right:0;
+    text-align:center;
+    font-size:9px;
+    color:rgba(232,161,60,.45);
+    pointer-events:none;
+    letter-spacing:2px;
+  }
+
+  /* ---------- game over overlay ---------- */
+  #gameover-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(8,5,2,.78);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    z-index:50;
+    border-radius:4px;
+    backdrop-filter:blur(1px);
+  }
+  #gameover-overlay.show{ display:flex; }
+  #gameover-overlay .go-title{
+    font-size:32px;
+    font-weight:800;
+    font-family:"Courier New",monospace;
+    color:var(--accent-red);
+    letter-spacing:3px;
+    text-shadow:0 0 4px #fff, 0 0 16px var(--accent-red), 0 0 30px var(--accent-red);
+    animation:crtFlicker 1.6s infinite;
+  }
+  @keyframes crtFlicker{
+    0%,100%{ opacity:1; }
+    92%{ opacity:1; }
+    93%{ opacity:.55; }
+    94%{ opacity:1; }
+    96%{ opacity:.75; }
+    97%{ opacity:1; }
+  }
+  #gameover-overlay .go-sub{
+    margin-top:10px;
+    font-size:12px;
+    color:var(--text-sub);
+  }
+  #gameover-overlay .go-score{
+    margin-top:14px;
+    font-size:13px;
+    color:var(--accent-gold);
+    text-shadow:var(--glow) rgba(255,207,107,.5);
+  }
+
+  /* ---------- footer ---------- */
+  #footer{
+    flex-shrink:0;
+    padding:10px 14px 18px;
+    display:flex;
+    gap:8px;
+  }
+  button.ctrl-btn{
+    flex:1;
+    padding:12px 0;
+    border-radius:4px;
+    background:transparent;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:2px;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+    transition:transform .08s ease, background .12s ease, color .12s ease;
+  }
+  button.ctrl-btn:active{ transform:scale(.95); }
+  #btn-auto{
+    border:2px solid var(--accent-cyan);
+    color:var(--accent-cyan);
+    text-shadow:var(--glow) rgba(95,208,217,.5);
+    box-shadow:0 0 8px rgba(95,208,217,.25);
+  }
+  #btn-auto:active{ background:var(--accent-cyan); color:#04262a; }
+  #btn-start{
+    border:2px solid var(--accent-green);
+    color:var(--accent-green);
+    text-shadow:var(--glow) rgba(95,217,122,.5);
+    box-shadow:0 0 8px rgba(95,217,122,.25);
+  }
+  #btn-start:active{ background:var(--accent-green); color:#08260f; }
+  #btn-stop{
+    border:2px solid var(--accent-amber-dim);
+    color:var(--accent-amber-dim);
+    text-shadow:var(--glow) rgba(185,129,47,.4);
+    box-shadow:0 0 8px rgba(185,129,47,.2);
+  }
+  #btn-stop:active{ background:var(--accent-amber-dim); color:#241605; }
+  #btn-drop{
+    border:2px solid var(--accent-red);
+    color:var(--accent-red);
+    text-shadow:var(--glow) rgba(255,90,60,.5);
+    box-shadow:0 0 8px rgba(255,90,60,.25);
+  }
+  #btn-drop:active{ background:var(--accent-red); color:#2a0a04; }
+  button.ctrl-btn:disabled{
+    opacity:.4;
+    box-shadow:none;
+    cursor:default;
+  }
+
+  /* ---------- score board (右側パネル) ---------- */
+  #score-board{
+    width:220px;
+    flex-shrink:0;
+    background:linear-gradient(180deg,#2c1c0e,#150d05);
+    border:1px solid #6b4a24;
+    border-radius:14px;
+    box-shadow:
+      0 0 0 2px #4a3216,
+      0 0 0 5px #1a1006,
+      0 0 30px rgba(232,161,60,.10),
+      0 10px 40px rgba(0,0,0,.7);
+    padding:16px 14px;
+    align-self:flex-start;
+  }
+  #score-board h2{
+    margin:0 0 12px;
+    font-size:13px;
+    letter-spacing:4px;
+    text-align:center;
+    color:var(--accent-amber);
+    text-shadow:var(--glow) rgba(232,161,60,.5);
+  }
+  .sb-best{
+    text-align:center;
+    border:1px solid var(--accent-gold);
+    border-radius:4px;
+    padding:8px 6px 10px;
+    margin-bottom:12px;
+    box-shadow:0 0 10px rgba(255,207,107,.2) inset;
+  }
+  .sb-best-label{
+    font-size:9.5px;
+    letter-spacing:2px;
+    color:var(--accent-gold);
+  }
+  .sb-best-value{
+    font-size:22px;
+    font-weight:700;
+    color:var(--accent-gold);
+    text-shadow:var(--glow) rgba(255,207,107,.6);
+    margin-top:2px;
+  }
+  .sb-best-value span{ font-size:11px; margin-left:2px; }
+  .sb-sub-label{
+    font-size:9.5px;
+    letter-spacing:2px;
+    color:var(--text-sub);
+    margin:0 0 6px;
+    text-align:center;
+  }
+  #sb-history{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    max-height:340px;
+    overflow-y:auto;
+  }
+  #sb-history li{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    padding:5px 7px;
+    border:1px solid var(--panel-border);
+    border-radius:3px;
+    background:var(--panel-bg);
+    color:var(--text-main);
+  }
+  #sb-history li .sb-rank{
+    color:var(--text-sub);
+    font-size:10px;
+    width:20px;
+  }
+  #sb-history li .sb-score{
+    font-weight:700;
+    color:var(--accent-amber);
+  }
+  #sb-history li.is-best{
+    border-color:var(--accent-gold);
+    box-shadow:0 0 6px rgba(255,207,107,.35);
+  }
+  #sb-history li.is-best .sb-score{ color:var(--accent-gold); }
+  #sb-empty{
+    text-align:center;
+    font-size:11px;
+    color:var(--text-sub);
+    padding:10px 0;
+  }
+
+  @media (max-width:760px){
+    #page-wrap{ flex-direction:column; align-items:center; }
+    #score-board{ width:100%; max-width:430px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="page-wrap">
+
+<div id="phone">
+
+
+  <div id="header">
+    <div class="title-row">COIN&nbsp;STACK&nbsp;GAME</div>
+    <div class="top-panels">
+      <div class="panel" id="holder-panel">
+        <div class="h-label">□ 1000円ホルダー □</div>
+        <div class="h-value" id="holder-count">0<span>個</span></div>
+      </div>
+      <div class="panel" id="score-panel">
+        <div class="s-label">SCORE</div>
+        <div class="s-value" id="score-value">0<span>円</span></div>
+      </div>
+    </div>
+    <div id="coin-grid"></div>
+  </div>
+
+  <div id="stage-wrap">
+    <div id="stage-frame">
+      <div id="next-hint">ドラッグで移動</div>
+      <canvas id="stage"></canvas>
+      <div id="gameover-overlay">
+        <div class="go-title">GAME over</div>
+        <div class="go-sub">「開始」または「落とす」でリスタート</div>
+        <div class="go-score" id="go-score-text">SCORE 0円</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer">
+    <button class="ctrl-btn" id="btn-auto">自動</button>
+    <button class="ctrl-btn" id="btn-start">開始</button>
+    <button class="ctrl-btn" id="btn-stop">停止</button>
+    <button class="ctrl-btn" id="btn-drop">落とす</button>
+  </div>
+
+</div>
+
+<aside id="score-board">
+  <h2>HIGH SCORE</h2>
+  <div class="sb-best">
+    <div class="sb-best-label">ALL-TIME BEST</div>
+    <div class="sb-best-value" id="sb-best-value">0<span>円</span></div>
+  </div>
+  <div class="sb-sub-label">LAST 10 GAMES</div>
+  <ol id="sb-history"></ol>
+</aside>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================
+     基本設定
+  ========================================================= */
+  const STAGE_W = 215;
+  const STAGE_H = 400;
+  const WALL_THICK = 7;
+  const FLOOR_THICK = 9;
+  const WALL_LEFT = WALL_THICK;
+  const WALL_RIGHT = STAGE_W - WALL_THICK;
+  const FLOOR_Y = STAGE_H - FLOOR_THICK;
+  const DEAD_LINE_BASE = 58;
+  const DEAD_LINE_MAX = STAGE_H / 2; // 最高レベルではエリアの半分まで下がる
+  const DEAD_LINE_LEVELS = 5;        // 1万円刻みで5段階(5万円で最高レベル)
+  const DEAD_LINE_STEP_SCORE = 10000;
+
+  const GRAVITY_BASE = 0.4;
+  const AUTO_GRAVITY_MULT = 5;
+  const COLLISION_ITER = 6;
+  const MERGE_FLASH_FRAMES = 18; // 合体時に光って消えるまでのフレーム数
+  const APPEAR_FRAMES = 20;      // 進化後の小銭がふわっと現れる時間(フレーム)
+
+  const COIN_TYPES = [
+    { value: 1,   r: 16, color: "#bdc3c7", dark: true,  label: "1",   mergeCount: 5 }, // 1円×5枚 → 5円
+    { value: 5,   r: 19, color: "#d35400", dark: false, label: "5",   mergeCount: 2 }, // 5円×2枚 → 10円
+    { value: 10,  r: 22, color: "#e67e22", dark: false, label: "10",  mergeCount: 5 }, // 10円×5枚 → 50円
+    { value: 50,  r: 25, color: "#95a5a6", dark: true,  label: "50",  mergeCount: 2 }, // 50円×2枚 → 100円
+    { value: 100, r: 28, color: "#ecf0f1", dark: true,  label: "100", mergeCount: 5 }, // 100円×5枚 → 500円
+    { value: 500, r: 31, color: "#f39c12", dark: false, label: "500", mergeCount: 2 }, // 500円×2枚 → 1000円ホルダー
+  ];
+  // 難易度アップ: 初期生成もすべての金種(1円〜500円)からランダムに出現する
+  const SPAWN_POOL = [0, 1, 2, 3, 4, 5];
+
+  /* =========================================================
+     DOM
+  ========================================================= */
+  const canvas = document.getElementById("stage");
+  const ctx = canvas.getContext("2d");
+  const holderCountEl = document.getElementById("holder-count");
+  const scoreValueEl = document.getElementById("score-value");
+  const goOverlay = document.getElementById("gameover-overlay");
+  const goScoreText = document.getElementById("go-score-text");
+  const coinGrid = document.getElementById("coin-grid");
+  const btnAuto = document.getElementById("btn-auto");
+  const btnStart = document.getElementById("btn-start");
+  const btnStop = document.getElementById("btn-stop");
+  const btnDrop = document.getElementById("btn-drop");
+  const sbBestValueEl = document.getElementById("sb-best-value");
+  const sbHistoryEl = document.getElementById("sb-history");
+
+  /* =========================================================
+     スコアボード(過去10回のスコア + 歴代最高) - localStorageに永続化
+  ========================================================= */
+  const SB_HISTORY_KEY = "coinStackGame_scoreHistory";
+  const SB_BEST_KEY = "coinStackGame_bestScore";
+
+  function loadScoreHistory() {
+    try {
+      const raw = localStorage.getItem(SB_HISTORY_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function loadBestScore() {
+    try {
+      return parseInt(localStorage.getItem(SB_BEST_KEY), 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function recordScoreHistory(score) {
+    let history = loadScoreHistory();
+    history.unshift(score);
+    history = history.slice(0, 10);
+    try {
+      localStorage.setItem(SB_HISTORY_KEY, JSON.stringify(history));
+    } catch (e) { /* ストレージが使えない環境は無視 */ }
+
+    let best = loadBestScore();
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SB_BEST_KEY, String(best)); } catch (e) {}
+    }
+    renderScoreBoard();
+  }
+
+  function renderScoreBoard() {
+    const best = loadBestScore();
+    sbBestValueEl.innerHTML = best.toLocaleString() + "<span>円</span>";
+
+    const history = loadScoreHistory();
+    sbHistoryEl.innerHTML = "";
+    if (history.length === 0) {
+      const empty = document.createElement("div");
+      empty.id = "sb-empty";
+      empty.textContent = "まだ記録がありません";
+      sbHistoryEl.appendChild(empty);
+      return;
+    }
+    history.forEach((score, idx) => {
+      const li = document.createElement("li");
+      if (best > 0 && score === best) li.classList.add("is-best");
+      const rank = document.createElement("span");
+      rank.className = "sb-rank";
+      rank.textContent = String(idx + 1).padStart(2, "0");
+      const val = document.createElement("span");
+      val.className = "sb-score";
+      val.textContent = score.toLocaleString() + "円";
+      li.appendChild(rank);
+      li.appendChild(val);
+      sbHistoryEl.appendChild(li);
+    });
+  }
+
+  // coin count grid cells
+  const coinCountEls = COIN_TYPES.map((t) => {
+    const cell = document.createElement("div");
+    cell.className = "coin-count-cell";
+    cell.innerHTML =
+      `<div class="ccc-dot" style="background:${t.color}"></div>` +
+      `<div class="ccc-label">${t.label}円</div>` +
+      `<div class="ccc-num">0</div>`;
+    coinGrid.appendChild(cell);
+    return cell.querySelector(".ccc-num");
+  });
+
+  /* =========================================================
+     Canvas 解像度対応 (Retina)
+  ========================================================= */
+  function setupCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = STAGE_W + "px";
+    canvas.style.height = STAGE_H + "px";
+    canvas.width = STAGE_W * dpr;
+    canvas.height = STAGE_H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  setupCanvas();
+
+  /* =========================================================
+     状態
+  ========================================================= */
+  let coins = [];          // 盤面上のコイン
+  let holderCount = 0;     // 完成した1000円ホルダー数
+  let nextId = 1;
+  let current = null;      // 落とす前のコイン(プレビュー)
+  let isRunning = false;   // ゲーム開始済みか
+  let isAuto = false;      // 自動モード中か
+  let isGameOver = false;
+  let rafId = null;
+  let autoTimer = 0;
+  let autoDir = 1;
+  let effects = [];        // 合体エフェクト(リング/テキスト)
+  let pendingSpawns = [];  // 合体アニメ完了後に生成する新コイン待ち行列 {x,y,type,delay}
+  let pendingHolders = []; // 合体アニメ完了後にホルダー数を増やす待ち行列 {delay}
+
+  // デッドライン(ゲームオーバーライン)の段階的な下降
+  let deadLineLevel = 0;               // 現在到達している段階(0〜DEAD_LINE_LEVELS)
+  let deadLineY = DEAD_LINE_BASE;      // 実際に描画・判定に使う現在のライン位置(なめらかに追従)
+  let deadLineTarget = DEAD_LINE_BASE; // 目標位置
+  let deadLineFlashTimer = 0;          // ライン下降時の警告フラッシュ演出の残りフレーム
+
+  function randSpawnType() {
+    return SPAWN_POOL[Math.floor(Math.random() * SPAWN_POOL.length)];
+  }
+
+  function makeCurrent() {
+    const type = randSpawnType();
+    const r = COIN_TYPES[type].r;
+    current = {
+      type,
+      x: STAGE_W / 2,
+      y: deadLineY - r - 10,
+      r,
+    };
+  }
+
+  function clampCurrentX() {
+    if (!current) return;
+    const r = current.r;
+    current.x = Math.max(WALL_LEFT + r, Math.min(WALL_RIGHT - r, current.x));
+  }
+
+  /* =========================================================
+     コイン生成 / 合体
+  ========================================================= */
+  function spawnCoin(x, y, type, vx = 0, vy = 0, evolved = false) {
+    coins.push({
+      id: nextId++,
+      type, x, y, vx, vy,
+      r: COIN_TYPES[type].r,
+      landed: false,
+      aboveLineFrames: 0,
+      scale: evolved ? 0 : 0.4, // 出現アニメーション用
+      merging: false,   // 合体で消える途中か
+      mergeTimer: 0,
+      evolved,          // 進化で生まれたコインか(ふわっと出現演出用)
+      appearT: 0,
+      glow: evolved ? 1 : 0,
+    });
+  }
+
+  function dropCoin() {
+    if (!isRunning || isGameOver || !current) return;
+    clampCurrentX();
+    spawnCoin(current.x, current.y, current.type, 0, 1);
+    makeCurrent();
+  }
+
+  // 同じ種類のコイン同士が「接触」でつながっているクラスタを Union-Find で検出し、
+  // そのクラスタのコイン数が進化に必要な枚数(mergeCount)以上集まったら、
+  // 必要枚数ぶん(その中で最も下にあるものから順に)消滅させ、
+  // 一番下の小銭の座標に1段階上の小銭を1つ生成する。
+  function processMerges() {
+    const n = coins.length;
+    if (n < 2) return;
+
+    const parent = new Array(n);
+    for (let i = 0; i < n; i++) parent[i] = i;
+    function find(x) {
+      while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+      return x;
+    }
+    function union(a, b) {
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent[ra] = rb;
+    }
+
+    const CONTACT_SLACK = 1.2; // 接触判定の許容誤差(px)
+    for (let i = 0; i < n; i++) {
+      if (coins[i].merging) continue; // 消滅アニメ中のコインは新たな合体対象にしない
+      for (let j = i + 1; j < n; j++) {
+        if (coins[j].merging) continue;
+        const a = coins[i], b = coins[j];
+        if (a.type !== b.type) continue;
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (dist < a.r + b.r + CONTACT_SLACK) union(i, j);
+      }
+    }
+
+    const groups = new Map();
+    for (let i = 0; i < n; i++) {
+      const r = find(i);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r).push(i);
+    }
+
+    for (const idxs of groups.values()) {
+      const type = coins[idxs[0]].type;
+      const need = COIN_TYPES[type].mergeCount;
+      if (idxs.length < need) continue;
+
+      // クラスタ内で最も下(yが大きい)にあるものから必要枚数だけを消費する
+      const sorted = idxs.slice().sort((p, q) => coins[q].y - coins[p].y);
+      const chosen = sorted.slice(0, need);
+      const bottom = coins[chosen[0]];
+
+      // 即座に消すのではなく「光って消える」演出のためマーキングする
+      chosen.forEach((idx) => {
+        const c = coins[idx];
+        c.merging = true;
+        c.mergeTimer = 0;
+        c.vx = 0;
+        c.vy = 0;
+      });
+
+      effects.push({ type: "ring", x: bottom.x, y: bottom.y, r: bottom.r * 1.8, life: 1 });
+
+      if (type === COIN_TYPES.length - 1) {
+        // 500円×2枚 -> 1000円ホルダー(演出完了後に加算)
+        pendingHolders.push({ delay: MERGE_FLASH_FRAMES });
+        effects.push({ type: "text", x: bottom.x, y: bottom.y - bottom.r - 6, text: "1000円ホルダー完成!", life: 1 });
+      } else {
+        pendingSpawns.push({ x: bottom.x, y: bottom.y, type: type + 1, delay: MERGE_FLASH_FRAMES });
+        effects.push({ type: "text", x: bottom.x, y: bottom.y - bottom.r - 6, text: `${COIN_TYPES[type + 1].value}円に進化!`, life: 1 });
+      }
+    }
+  }
+
+  // 合体アニメーション(光って消える→待ってから新コイン出現)を毎フレーム進める
+  function updateMergeAnimations() {
+    let removedAny = false;
+    for (const c of coins) {
+      if (c.merging) {
+        c.mergeTimer++;
+        if (c.mergeTimer >= MERGE_FLASH_FRAMES) removedAny = true;
+      }
+    }
+    if (removedAny) {
+      coins = coins.filter((c) => !(c.merging && c.mergeTimer >= MERGE_FLASH_FRAMES));
+    }
+
+    if (pendingSpawns.length) {
+      const ready = [];
+      pendingSpawns = pendingSpawns.filter((p) => {
+        p.delay--;
+        if (p.delay <= 0) { ready.push(p); return false; }
+        return true;
+      });
+      ready.forEach((p) => spawnCoin(p.x, p.y, p.type, 0, -1.2, true));
+    }
+
+    if (pendingHolders.length) {
+      let readyCount = 0;
+      pendingHolders = pendingHolders.filter((p) => {
+        p.delay--;
+        if (p.delay <= 0) { readyCount++; return false; }
+        return true;
+      });
+      if (readyCount > 0) {
+        holderCount += readyCount;
+        flashHolderPanel();
+      }
+    }
+  }
+
+  /* =========================================================
+     物理演算
+  ========================================================= */
+  // コインが壁・床の外に絶対にはみ出さないよう位置を強制的に補正する。
+  // withVelocityFx=true のときのみ、床への着地に伴う速度リセットと landed フラグの更新を行う。
+  function clampToStage(c, withVelocityFx) {
+    if (c.x - c.r < WALL_LEFT) {
+      c.x = WALL_LEFT + c.r;
+      if (withVelocityFx) c.vx = Math.abs(c.vx) * 0.15;
+    }
+    if (c.x + c.r > WALL_RIGHT) {
+      c.x = WALL_RIGHT - c.r;
+      if (withVelocityFx) c.vx = -Math.abs(c.vx) * 0.15;
+    }
+    if (c.y + c.r > FLOOR_Y) {
+      c.y = FLOOR_Y - c.r;
+      if (withVelocityFx) {
+        if (c.vy > 0) c.vy = 0;
+        c.landed = true;
+      }
+    }
+  }
+
+  function resolveCollisionsOnce() {
+    for (let i = 0; i < coins.length; i++) {
+      const a = coins[i];
+      for (let j = i + 1; j < coins.length; j++) {
+        const b = coins[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        let dist = Math.hypot(dx, dy);
+        const minDist = a.r + b.r;
+        if (dist < minDist) {
+          if (dist < 0.0001) dist = 0.0001;
+          const overlap = minDist - dist;
+          const nx = dx / dist, ny = dy / dist;
+          const totalR = a.r + b.r;
+          const aRatio = b.r / totalR;
+          const bRatio = a.r / totalR;
+
+          a.x -= nx * overlap * aRatio;
+          a.y -= ny * overlap * aRatio;
+          b.x += nx * overlap * bRatio;
+          b.y += ny * overlap * bRatio;
+
+          // 相対速度を法線方向に減衰させ、ブルブル振動を防止
+          const rvx = b.vx - a.vx, rvy = b.vy - a.vy;
+          const velAlongNormal = rvx * nx + rvy * ny;
+          if (velAlongNormal < 0) {
+            const restitution = 0.02;
+            const impulse = -(1 + restitution) * velAlongNormal * 0.5;
+            a.vx -= impulse * nx; a.vy -= impulse * ny;
+            b.vx += impulse * nx; b.vy += impulse * ny;
+          }
+          a.landed = true; b.landed = true;
+        }
+      }
+    }
+  }
+
+  function updatePhysics() {
+    const g = GRAVITY_BASE * (isAuto ? AUTO_GRAVITY_MULT : 1);
+
+    for (const c of coins) {
+      if (c.merging) continue; // 消滅演出中は静止させる(物理演算をスキップ)
+
+      c.vy += g;
+      c.vy = Math.min(c.vy, 26);
+      c.vx *= 0.99;
+      c.x += c.vx;
+      c.y += c.vy;
+
+      if (c.evolved) {
+        // 進化直後の「ふわっと」出現アニメーション(オーバーシュートしながら拡大+発光)
+        c.appearT++;
+        const t = Math.min(1, c.appearT / APPEAR_FRAMES);
+        c.scale = easeOutBack(t);
+        c.glow = Math.max(0, 1 - t);
+        if (t >= 1) c.evolved = false;
+      } else if (c.scale < 1) {
+        c.scale = Math.min(1, c.scale + 0.18);
+      }
+    }
+
+    // 壁 / 床（初回クランプ）
+    for (const c of coins) clampToStage(c, true);
+
+    // 合体判定は「押し戻し補正が起こる前」の重なりを見て行う。
+    // 補正処理を先に行うと重なりが即座に解消されてしまい、
+    // 同種のコインが接触しても合体条件に一切到達できなくなるため、
+    // 衝突解決(押し出し)より必ず先に判定する。
+    processMerges();
+
+    // 衝突解決の各反復の後に必ず壁・床へ再クランプする。
+    // これを行わないと、周囲のコインからの押し出し補正によって
+    // 一番下（床際）のコインが床の外へはみ出してしまうことがあるため、
+    // 「絶対にはみ出さない」ことを保証するために毎回クランプする。
+    for (let i = 0; i < COLLISION_ITER; i++) {
+      resolveCollisionsOnce();
+      for (const c of coins) clampToStage(c, false);
+    }
+
+    // 静止処理（ジッター完全排除）
+    for (const c of coins) {
+      if (Math.abs(c.vx) < 0.04) c.vx = 0;
+      const restingOnFloor = c.y + c.r >= FLOOR_Y - 0.6;
+      if (restingOnFloor && Math.abs(c.vy) < 0.2) c.vy = 0;
+    }
+
+    // スコアに応じてデッドラインを更新(1万円ごとに段階的に下降)
+    updateDeadLineLevel();
+
+    checkGameOver();
+
+    // 合体アニメーション(光って消える→新コイン出現)を進める
+    updateMergeAnimations();
+
+    // エフェクト更新
+    effects = effects.filter((e) => (e.life -= 0.06) > 0);
+  }
+
+  function checkGameOver() {
+    if (isGameOver) return;
+    // 「着地済み（＝一度でも床か他のコインに触れた）」コインの頭頂部が
+    // デッドラインを少しでも越えていたら、その瞬間に即アウト。
+    // 静止を待たない（少しでも触れれば即ゲームオーバー）。
+    for (const c of coins) {
+      if (!c.landed) continue;
+      const topY = c.y - c.r;
+      if (topY < deadLineY) {
+        triggerGameOver();
+        return;
+      }
+    }
+  }
+
+  function triggerGameOver() {
+    isGameOver = true;
+    isAuto = false;
+    const finalScore = computeScore();
+    goScoreText.textContent = `SCORE ${finalScore.toLocaleString()}円`;
+    goOverlay.classList.add("show");
+    recordScoreHistory(finalScore);
+  }
+
+  /* =========================================================
+     スコア / 表示更新
+  ========================================================= */
+  function computeScore() {
+    let total = holderCount * 1000;
+    for (const c of coins) total += COIN_TYPES[c.type].value;
+    return total;
+  }
+
+  // スコアが1万円進むごとにデッドラインを少し下げ(=難易度上昇)、
+  // 5万円(5段階)でエリアの半分に到達したらそれ以降は変動させない。
+  function updateDeadLineLevel() {
+    const score = computeScore();
+    const newLevel = Math.min(DEAD_LINE_LEVELS, Math.floor(score / DEAD_LINE_STEP_SCORE));
+    if (newLevel > deadLineLevel) {
+      deadLineLevel = newLevel;
+      deadLineTarget =
+        DEAD_LINE_BASE + (DEAD_LINE_MAX - DEAD_LINE_BASE) * (deadLineLevel / DEAD_LINE_LEVELS);
+      deadLineFlashTimer = 55;
+      const label = deadLineLevel >= DEAD_LINE_LEVELS ? "最高難易度到達!!" : "警告!ラインが下降!";
+      effects.push({ type: "text", x: STAGE_W / 2, y: deadLineY + 18, text: label, life: 1 });
+    }
+    // 目標位置へなめらかに追従させる(下がるエフェクト)
+    deadLineY += (deadLineTarget - deadLineY) * 0.05;
+    if (deadLineFlashTimer > 0) deadLineFlashTimer--;
+  }
+
+  function updateHud() {
+    holderCountEl.innerHTML = holderCount + "<span>個</span>";
+    scoreValueEl.innerHTML = computeScore().toLocaleString() + "<span>円</span>";
+    const counts = new Array(COIN_TYPES.length).fill(0);
+    for (const c of coins) counts[c.type]++;
+    counts.forEach((n, i) => (coinCountEls[i].textContent = n));
+  }
+
+  /* =========================================================
+     描画
+  ========================================================= */
+  function drawCoin(c, x, y, r, scale = 1) {
+    const t = COIN_TYPES[c.type];
+    const rr = r * scale;
+    ctx.save();
+    ctx.translate(x, y);
+
+    const grad = ctx.createRadialGradient(-rr * 0.3, -rr * 0.35, rr * 0.15, 0, 0, rr);
+    grad.addColorStop(0, shade(t.color, 28));
+    grad.addColorStop(0.7, t.color);
+    grad.addColorStop(1, shade(t.color, -22));
+
+    ctx.beginPath();
+    ctx.arc(0, 0, rr, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = shade(t.color, -35);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, rr * 0.72, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = t.dark ? "#2c2c2c" : "#fff8ec";
+    ctx.font = `700 ${Math.max(9, rr * 0.5)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(t.label, 0, 1);
+
+    ctx.restore();
+  }
+
+  function shade(hex, amt) {
+    const num = parseInt(hex.slice(1), 16);
+    let r = (num >> 16) + amt;
+    let g = ((num >> 8) & 0xff) + amt;
+    let b = (num & 0xff) + amt;
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // 0→1 の進行度を、少しオーバーシュートしながら着地させる easing（ふわっと出現用）
+  function easeOutBack(t) {
+    const c1 = 1.7;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  function flashHolderPanel() {
+    const el = document.getElementById("holder-panel");
+    el.classList.remove("pulse");
+    void el.offsetWidth; // reflow でアニメーションを再始動させる
+    el.classList.add("pulse");
+  }
+
+  // 合体で光って消える途中 / 進化直後で発光しているコインを描画する
+  function drawCoinWithFx(c) {
+    let scale = c.scale;
+    let alpha = 1;
+    let glowAlpha = 0;
+
+    if (c.merging) {
+      const p = Math.min(1, c.mergeTimer / MERGE_FLASH_FRAMES);
+      const flashPulse = Math.abs(Math.sin(p * Math.PI * 5)); // 数回チカチカ光る
+      scale = c.scale * (1 + flashPulse * 0.14);
+      if (p > 0.55) {
+        const shrinkT = (p - 0.55) / 0.45;
+        scale *= Math.max(0, 1 - shrinkT);
+        alpha = Math.max(0, 1 - shrinkT);
+      }
+      glowAlpha = flashPulse;
+    } else if (c.glow > 0.01) {
+      glowAlpha = c.glow;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    if (glowAlpha > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = glowAlpha * 0.85 * alpha;
+      const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r * 2.6);
+      g.addColorStop(0, "rgba(255,250,220,0.95)");
+      g.addColorStop(0.5, "rgba(255,225,150,0.5)");
+      g.addColorStop(1, "rgba(255,225,150,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawCoin(c, c.x, c.y, c.r, scale);
+
+    if (c.merging && glowAlpha > 0.02) {
+      // コイン本体の上に白いフラッシュを重ねてピカッと光らせる
+      ctx.save();
+      ctx.globalAlpha = glowAlpha * 0.8 * alpha;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r * scale, 0, Math.PI * 2);
+      ctx.fillStyle = "#fffbe6";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, STAGE_W, STAGE_H);
+
+    // 背景(レトロ・ブラウン系の盤面)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, STAGE_H);
+    bgGrad.addColorStop(0, "#241a0f");
+    bgGrad.addColorStop(1, "#100b05");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, STAGE_W, STAGE_H);
+
+    // デッドライン(破線) - スコアに応じて段階的に下降する
+    ctx.save();
+    ctx.strokeStyle = "rgba(231,76,60,0.75)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(WALL_LEFT, deadLineY);
+    ctx.lineTo(WALL_RIGHT, deadLineY);
+    ctx.stroke();
+    ctx.restore();
+
+    // デッドライン下降時の警告フラッシュ演出
+    if (deadLineFlashTimer > 0) {
+      const t = deadLineFlashTimer / 55;
+      ctx.save();
+      ctx.globalAlpha = t * 0.5;
+      ctx.fillStyle = "#ff3b30";
+      ctx.fillRect(0, 0, STAGE_W, STAGE_H);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, t * 1.4);
+      const bandH = 30;
+      const bandGrad = ctx.createLinearGradient(0, deadLineY - bandH / 2, 0, deadLineY + bandH / 2);
+      bandGrad.addColorStop(0, "rgba(255,90,70,0)");
+      bandGrad.addColorStop(0.5, "rgba(255,90,70,0.95)");
+      bandGrad.addColorStop(1, "rgba(255,90,70,0)");
+      ctx.fillStyle = bandGrad;
+      ctx.fillRect(WALL_LEFT, deadLineY - bandH / 2, WALL_RIGHT - WALL_LEFT, bandH);
+      ctx.restore();
+    }
+
+    // コイン
+    for (const c of coins) drawCoinWithFx(c);
+
+    // 合体エフェクト(リング拡散 + 「〇〇円に進化!」テキスト)
+    for (const e of effects) {
+      if (e.type === "text") {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, e.life);
+        ctx.fillStyle = "#fff3b0";
+        ctx.font = "700 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.shadowColor = "rgba(255,210,110,0.9)";
+        ctx.shadowBlur = 6;
+        ctx.fillText(e.text, e.x, e.y - (1 - e.life) * 26);
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.globalAlpha = e.life;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.r * (1.4 - e.life * 0.4), 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffe9a8";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // 壁(レトロ・真鍮/木目調)
+    ctx.fillStyle = "#6b4a24";
+    ctx.fillRect(0, 0, WALL_THICK, STAGE_H);
+    ctx.fillRect(STAGE_W - WALL_THICK, 0, WALL_THICK, STAGE_H);
+    // 床
+    const floorGrad = ctx.createLinearGradient(0, FLOOR_Y, 0, STAGE_H);
+    floorGrad.addColorStop(0, "#6b4a24");
+    floorGrad.addColorStop(1, "#2c1c0e");
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, FLOOR_Y, STAGE_W, STAGE_H - FLOOR_Y);
+
+    // 予告コイン(プレビュー)
+    if (isRunning && !isGameOver && current) {
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      drawCoin(current, current.x, current.y, current.r, 1);
+      ctx.restore();
+      // ガイドライン
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(current.x, current.y + current.r);
+      ctx.lineTo(current.x, FLOOR_Y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 未開始時のガイド
+    if (!isRunning) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = "700 13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("「開始」ボタンでスタート", STAGE_W / 2, STAGE_H / 2);
+      ctx.restore();
+    }
+  }
+
+  /* =========================================================
+     メインループ
+  ========================================================= */
+  function loop() {
+    if (isRunning && !isGameOver) {
+      updatePhysics();
+
+      if (isAuto) {
+        autoTimer += 1;
+        // 左右にゆらゆら移動
+        if (current) {
+          current.x += autoDir * 1.6;
+          if (current.x < WALL_LEFT + current.r + 4) autoDir = 1;
+          if (current.x > WALL_RIGHT - current.r - 4) autoDir = -1;
+        }
+        if (autoTimer > 55) {
+          autoTimer = 0;
+          dropCoin();
+        }
+      }
+      updateHud();
+    }
+    render();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  /* =========================================================
+     ゲーム制御
+  ========================================================= */
+  function resetGame() {
+    coins = [];
+    holderCount = 0;
+    effects = [];
+    pendingSpawns = [];
+    pendingHolders = [];
+    isGameOver = false;
+    autoTimer = 0;
+    deadLineLevel = 0;
+    deadLineY = DEAD_LINE_BASE;
+    deadLineTarget = DEAD_LINE_BASE;
+    deadLineFlashTimer = 0;
+    goOverlay.classList.remove("show");
+    makeCurrent();
+    updateHud();
+  }
+
+  // 「開始」: 新しいゲームを開始する(常にリセットして手動操作からスタート)
+  function startGame() {
+    resetGame();
+    isRunning = true;
+    isAuto = false;
+  }
+
+  // 「自動」: 自動モードをON(未スタート/ゲームオーバー中なら新規ゲームも開始)
+  function enableAuto() {
+    if (!isRunning || isGameOver) {
+      resetGame();
+      isRunning = true;
+    }
+    isAuto = true;
+  }
+
+  // 「停止」: 自動モードのみOFF(手動操作は継続可能)
+  function stopAuto() {
+    isAuto = false;
+  }
+
+  // 「落とす」: 現在のコインを手動で落とす
+  function handleDropButton() {
+    if (isGameOver) {
+      resetGame();
+      isRunning = true;
+      isAuto = false;
+      return;
+    }
+    if (!isRunning) {
+      isRunning = true;
+      isAuto = false;
+      if (!current) makeCurrent();
+    }
+    dropCoin();
+  }
+
+  /* =========================================================
+     入力(ドラッグ / タッチ)
+  ========================================================= */
+  function pointerToStageX(clientX) {
+    const rect = canvas.getBoundingClientRect();
+    return (clientX - rect.left) * (STAGE_W / rect.width);
+  }
+
+  function onPointerMove(clientX) {
+    if (!isRunning || isGameOver || !current) return;
+    isAuto = false; // 手動操作したら自動移動は止める(自動落下は継続)
+    current.x = pointerToStageX(clientX);
+    clampCurrentX();
+  }
+
+  canvas.addEventListener("pointerdown", (e) => {
+    onPointerMove(e.clientX);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (e.buttons !== 1 && e.pointerType === "mouse") {
+      // マウスは移動だけで追従(ドラッグ不要)
+      onPointerMove(e.clientX);
+      return;
+    }
+    onPointerMove(e.clientX);
+  });
+  canvas.addEventListener(
+    "touchmove",
+    (e) => {
+      if (e.touches[0]) onPointerMove(e.touches[0].clientX);
+      e.preventDefault();
+    },
+    { passive: false }
+  );
+
+  /* =========================================================
+     ボタン
+  ========================================================= */
+  btnAuto.addEventListener("click", enableAuto);
+  btnStart.addEventListener("click", startGame);
+  btnStop.addEventListener("click", stopAuto);
+  btnDrop.addEventListener("click", handleDropButton);
+
+  /* =========================================================
+     初期化
+  ========================================================= */
+  makeCurrent();
+  updateHud();
+  renderScoreBoard();
+  render();
+  loop();
+
+  window.addEventListener("resize", () => {
+    setupCanvas();
+  });
+})();
+</script>
+</body>
+</html>
