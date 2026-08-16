@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>小銭積みゲーム</title>
 <style>
   :root{
@@ -32,6 +32,7 @@
       radial-gradient(circle at 50% -10%, #3a2611 0%, var(--retro-bg-1) 45%, var(--retro-bg-2) 100%);
     font-family:"Courier New","MS Gothic",monospace;
     color:var(--text-main);
+    overscroll-behavior-y:none; /* 引っ張り時のバウンド(ラバーバンド)でブラウザのバー(URL/ホームバー)が出現するのを防止 */
   }
   body{
     position:relative;
@@ -66,15 +67,18 @@
     align-items:flex-start;
     justify-content:center;
     gap:16px;
-    min-height:100vh;
+    min-height:100vh;   /* dvh未対応ブラウザ向けフォールバック */
+    min-height:100dvh;  /* モバイルのアドレスバー等を含む実際の表示領域に追従 */
     padding:16px 10px;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));
   }
 
   #phone{
     position:relative;
     width:100%;
     max-width:430px;
-    height:calc(100vh - 32px);
+    height:calc(100vh - 32px);                                       /* dvh未対応ブラウザ向けフォールバック */
+    height:calc(100dvh - 32px - env(safe-area-inset-bottom));         /* 実際に見えている範囲＋ホームバー分を確保 */
     max-height:900px;
     margin:0 auto;
     background:linear-gradient(180deg,#2c1c0e,#150d05);
@@ -256,7 +260,7 @@
   /* ---------- footer ---------- */
   #footer{
     flex-shrink:0;
-    padding:10px 14px 18px;
+    padding:10px 14px calc(18px + env(safe-area-inset-bottom));
     display:flex;
     gap:8px;
   }
