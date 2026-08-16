@@ -47,6 +47,29 @@
             text-shadow: var(--glow) var(--text-color);
         }
 
+        /* 総合勝利: 画面全体が金色にきらめくフラッシュ演出 */
+        body.effect-win-flash {
+            animation: winScreenFlash 0.9s ease-out;
+        }
+        @keyframes winScreenFlash {
+            0%   { filter: brightness(1) saturate(1); }
+            12%  { filter: brightness(2.6) saturate(1.6) drop-shadow(0 0 40px #ffe066); }
+            30%  { filter: brightness(1.4) saturate(1.4) drop-shadow(0 0 25px #ffe066); }
+            50%  { filter: brightness(2.2) saturate(1.6) drop-shadow(0 0 40px #ffe066); }
+            100% { filter: brightness(1) saturate(1); }
+        }
+
+        /* 総合敗北: 画面が一瞬モノクロになる演出 */
+        body.effect-lose-mono {
+            animation: loseScreenMono 0.9s ease-out;
+        }
+        @keyframes loseScreenMono {
+            0%   { filter: grayscale(0) brightness(1); }
+            10%  { filter: grayscale(1) brightness(0.55) contrast(1.2); }
+            60%  { filter: grayscale(1) brightness(0.6) contrast(1.15); }
+            100% { filter: grayscale(0) brightness(1); }
+        }
+
         header {
             text-align: center;
             margin-bottom: 4px;
@@ -192,10 +215,10 @@
         .card-top { font-size: clamp(0.8rem, 3.1vw, 1.05rem); line-height: 1; }
         .card-center { font-size: clamp(1.5rem, 5.8vw, 2.15rem); text-align: center; margin: auto 0;}
         
-        .suit-heart { color: #ff3366; text-shadow: 0 0 8px #ff3366; }   /* 火 */
-        .suit-spade { color: #33ccff; text-shadow: 0 0 8px #33ccff; }   /* 風 */
-        .suit-club { color: #33ff66; text-shadow: 0 0 8px #33ff66; }    /* 地 */
-        .suit-diamond { color: #3399ff; text-shadow: 0 0 8px #3399ff; } /* 水 */
+        .suit-heart { color: #ff3366; text-shadow: 0 0 8px #ff3366; }   /* 火(赤) */
+        .suit-spade { color: #3399ff; text-shadow: 0 0 8px #3399ff; }   /* 風(青) */
+        .suit-club { color: #3399ff; text-shadow: 0 0 8px #3399ff; }    /* 地(青) */
+        .suit-diamond { color: #ff3366; text-shadow: 0 0 8px #ff3366; } /* 水(赤) */
         
         .center-battle-area {
             display: flex;
@@ -299,6 +322,7 @@
 
         .text-cpu { color: var(--accent-color); text-shadow: 0 0 8px var(--accent-color); }
         .text-player { color: var(--text-color); }
+        .decl-parent { color: var(--text-color); text-shadow: 0 0 8px var(--text-color); } /* 宣言文中の「親(CPU)」= 緑色 */
 
         #dynamic-announcement {
             position: absolute;
@@ -395,7 +419,7 @@
             
             <!-- 親宣言を目立たせるメッセージボックス -->
             <div class="message-box" id="message">
-                <span id="msg-main">親(CPU)宣言: 待機中</span>
+                <span id="msg-main"><span class="decl-parent">親(CPU)</span>宣言: 待機中</span>
                 <span class="sub-msg" id="msg-sub">カードを選択せよ</span>
             </div>
             
@@ -415,13 +439,13 @@
     </div>
 
     <div class="affinity-panel">
-        <span class="affinity-title">[ BATTLE RULE : マーク勝利+6PTS / 数字勝利+6PTS ]</span>
+        <span class="affinity-title">[ BATTLE RULE : マーク勝利 子+5PTS/親+3PTS ／ 数字はそのままカードの数値 ／ 親(CPU)は毎回+2PTS ]</span>
         <div class="affinity-flow">
             <span class="aff-item suit-diamond">♦水</span><span>＞</span>
             <span class="aff-item suit-heart">♥火</span><span>＞</span>
             <span class="aff-item suit-club">♣地</span><span>＞</span>
             <span class="aff-item suit-diamond">♦水</span>
-            <span style="color:#666; font-size:0.65rem; margin-left:2px;">(♠風=中立)</span>
+            <span class="aff-item suit-spade">♠風＝中立</span>
         </div>
     </div>
 
@@ -481,19 +505,59 @@
             gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
             osc.start(now);
             osc.stop(now + 0.2);
+        } else if (type === 'roundwin') {
+            // ラウンド勝利(子): 明るく弾む2音の勝利チャイム(負け音との混同を防ぐ)
+            [880, 1318.5].forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, now + i * 0.09);
+                gain.gain.setValueAtTime(0.16, now + i * 0.09);
+                gain.gain.linearRampToValueAtTime(0.001, now + i * 0.09 + 0.15);
+                osc.start(now + i * 0.09);
+                osc.stop(now + i * 0.09 + 0.15);
+            });
+        } else if (type === 'roundlose') {
+            // ラウンド敗北(子): はっきり沈む「ぶー」という短いブザー音
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(90, now + 0.28);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
         } else if (type === 'win') {
-            [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            // 総合勝利: 上昇アルペジオ+きらめくスイープで派手に演出
+            [523.25, 659.25, 783.99, 1046.50, 1318.5].forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(freq, now + i * 0.08);
-                gain.gain.setValueAtTime(0.15, now + i * 0.08);
-                gain.gain.linearRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+                gain.gain.setValueAtTime(0.18, now + i * 0.08);
+                gain.gain.linearRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
                 osc.start(now + i * 0.08);
-                osc.stop(now + i * 0.08 + 0.2);
+                osc.stop(now + i * 0.08 + 0.25);
             });
+            const sparkle = audioCtx.createOscillator();
+            const sGain = audioCtx.createGain();
+            sparkle.connect(sGain);
+            sGain.connect(audioCtx.destination);
+            sparkle.type = 'sine';
+            sparkle.frequency.setValueAtTime(1200, now + 0.3);
+            sparkle.frequency.exponentialRampToValueAtTime(3200, now + 0.75);
+            sGain.gain.setValueAtTime(0.001, now + 0.3);
+            sGain.gain.linearRampToValueAtTime(0.12, now + 0.4);
+            sGain.gain.linearRampToValueAtTime(0.001, now + 0.85);
+            sparkle.start(now + 0.3);
+            sparkle.stop(now + 0.85);
         } else if (type === 'lose') {
             [300, 240, 180, 120].forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
@@ -589,6 +653,7 @@
     let currentCCard = null;
     let declaredSuit = '';
     let roundCount = 0;
+    let preCommittedConIndex = null; // 親(CPU)が宣言時に確定させた「今ラウンドで実際に出すカード」のインデックス(嘘なし宣言用)
 
     function initGame() {
         initAudio();
@@ -632,6 +697,14 @@
         anim.style.animation = 'popZoom 1.2s ease-out forwards';
     }
 
+    // 総合勝利/敗北時に画面全体を一瞬演出する(勝利=金色フラッシュ、敗北=モノクロ)
+    function triggerScreenEffect(className) {
+        document.body.classList.remove('effect-win-flash', 'effect-lose-mono');
+        void document.body.offsetHeight; // reflow でアニメーションを再始動させる
+        document.body.classList.add(className);
+        setTimeout(() => document.body.classList.remove(className), 950);
+    }
+
     function startNewRound() {
         if (playerWins === 0 && conWins === 0) {
             let deck = createDeck();
@@ -645,10 +718,13 @@
         currentPCard = null;
         currentCCard = null;
 
-        // 親（CPU）が最初のマークを宣言（数字は出さない）
-        const randomSuitSymbol = suitsSymbols[Math.floor(Math.random() * suitsSymbols.length)];
-        declaredSuit = randomSuitSymbol;
-        let suitNameJp = suitData[randomSuitSymbol].name;
+        // 親（CPU）は「今ラウンドで実際に出すカード」を手札からランダムに1枚だけ先に確定させ、
+        // そのカードのマークをそのまま宣言する(嘘なし＝宣言と実際に出すカードのマークは必ず一致する)。
+        // 手札の中から均等に1枚選ぶため、宣言されるマークの頻度も手札のマーク構成と自然に一致する。
+        preCommittedConIndex = Math.floor(Math.random() * conHand.length);
+        const committedCard = conHand[preCommittedConIndex];
+        declaredSuit = committedCard.suit.symbol;
+        let suitNameJp = committedCard.suit.name;
 
         document.getElementById('action-btn').classList.add('hidden');
         document.getElementById('con-arena').innerHTML = '<span class="arena-label">CPU ZONE</span>';
@@ -656,16 +732,12 @@
         
         hideResults();
         
-        // 親のマーク宣言を大きく目立たせて表示
-        setMessage(`👑 親(CPU) 宣言: 【 ${suitNameJp} (${randomSuitSymbol}) 】`, "相手の数字を読み、カードを選択せよ");
+        // 親のマーク宣言を大きく目立たせて表示(「親(CPU)」=緑、マーク名=マークの色(♥♦赤/♠♣青)で色分け)
+        setMessage(`👑 <span class="decl-parent">親(CPU)</span> 宣言: 【 <span class="${suitData[declaredSuit].class}">${suitNameJp} (${declaredSuit})</span> 】`, "相手の数字を読み、カードを選択せよ");
         
-        // 親権の揺らぎや保持のステータス演出
+        // 親(CPU)は毎ラウンド必ず+2ptのボーナスを得る(先にマークを宣言する不利の緩和)
         const roleStatusEl = document.getElementById('con-role-status');
-        if (roundCount > 1) {
-            roleStatusEl.innerText = "[親権揺らぎ中]";
-        } else {
-            roleStatusEl.innerText = "[親権保持/BONUS+3]";
-        }
+        roleStatusEl.innerText = "[親権保持/BONUS+2]";
 
         renderHands();
         updateScoreBoard();
@@ -733,7 +805,8 @@
         gameState = 'RESULT';
 
         currentPCard = playerHand[selectedIndex];
-        const conIndex = Math.floor(Math.random() * conHand.length);
+        // 親(CPU)は宣言時に確定させたカードを必ずそのまま出す(嘘なし宣言の担保)
+        const conIndex = preCommittedConIndex;
         currentCCard = conHand[conIndex];
 
         playerHand.splice(selectedIndex, 1);
@@ -766,49 +839,35 @@
         let pSuit = currentPCard.suit.symbol;
         let cSuit = currentCCard.suit.symbol;
 
-        let markWinner = 'DRAW';
+        // ♠(風)が絡む場合は、親子どちらが出しても必ずマーク無効の「数字だけの勝負」になる
+        const isNeutral = (pSuit === '♠' || cSuit === '♠');
+
         let pMarkWin = false;
         let cMarkWin = false;
 
-        if ((pSuit === '♦' && cSuit === '♥') || (pSuit === '♥' && cSuit === '♣') || (pSuit === '♣' && cSuit === '♦')) {
-            pMarkWin = true;
-        } else if ((cSuit === '♦' && pSuit === '♥') || (cSuit === '♥' && pSuit === '♣') || (cSuit === '♣' && pSuit === '♦')) {
-            cMarkWin = true;
+        if (!isNeutral) {
+            if ((pSuit === '♦' && cSuit === '♥') || (pSuit === '♥' && cSuit === '♣') || (pSuit === '♣' && cSuit === '♦')) {
+                pMarkWin = true;
+            } else if ((cSuit === '♦' && pSuit === '♥') || (cSuit === '♥' && pSuit === '♣') || (cSuit === '♣' && pSuit === '♦')) {
+                cMarkWin = true;
+            }
         }
 
-        let pPoints = 0;
-        let cPoints = 0;
+        const PLAYER_MARK_BONUS = 5; // 子(プレイヤー)のマーク(属性)勝利ボーナス
+        const CON_MARK_BONUS = 3;    // 親(CPU)のマーク(属性)勝利ボーナス(変更なし)
+        const PARENT_BONUS = 2;      // 親(CPU)は先にマークを宣言する不利を緩和するため、毎ラウンド必ず加点(変更なし)
 
-        if (pMarkWin) {
-            pPoints += 6;
-        } else if (cMarkWin) {
-            cPoints += 6;
-        }
-
-        let pNumWin = false;
-        let cNumWin = false;
-
-        if (currentPCard.value > currentCCard.value) {
-            pNumWin = true;
-            pPoints += 6;
-        } else if (currentCCard.value > currentPCard.value) {
-            cNumWin = true;
-            cPoints += 6;
-        }
-
-        let cBonusApplied = false;
-        if (roundCount === 1) {
-            cPoints += 3;
-            cBonusApplied = true;
-        }
+        // 出したカードの数字にマーク勝利ボーナスを足して勝負する
+        let pPoints = currentPCard.value + (pMarkWin ? PLAYER_MARK_BONUS : 0);
+        let cPoints = currentCCard.value + (cMarkWin ? CON_MARK_BONUS : 0) + PARENT_BONUS;
 
         const pResultEl = document.getElementById('player-result');
-        pResultEl.innerHTML = `<div class="calc-text">マーク:${pMarkWin?'+6':'0'} 数字:${pNumWin?'+6':'0'}</div>` +
+        pResultEl.innerHTML = `<div class="calc-text">数字:${currentPCard.value} マーク:${pMarkWin ? '+5' : '0'}</div>` +
                               `<div class="total-text">= ${pPoints}PT</div>`;
         pResultEl.classList.remove('hidden');
 
         const cResultEl = document.getElementById('con-result');
-        cResultEl.innerHTML = `<div class="calc-text">マーク:${cMarkWin?'+6':'0'} 数字:${cNumWin?'+6':'0'}${cBonusApplied? ' 親+3':''}</div>` +
+        cResultEl.innerHTML = `<div class="calc-text">数字:${currentCCard.value} マーク:${cMarkWin ? '+3' : '0'} 親+2</div>` +
                               `<div class="total-text">= ${cPoints}PT</div>`;
         cResultEl.classList.remove('hidden');
 
@@ -824,8 +883,10 @@
         }
 
         if (roundWinner === 'PLAYER') {
+            playSound('roundwin');
             setMessage("PLAYER WIN!", "Tap to continue");
         } else if (roundWinner === 'CON') {
+            playSound('roundlose');
             setMessage("CPU(親) WIN...", "Tap to continue");
         } else {
             setMessage("DRAW MATCH", "Tap to continue");
@@ -856,10 +917,12 @@
                     setMessage("★ TOTAL VICTORY! ★", "Tap to restart");
                     showDynamicAnnouncement("WIN");
                     playSound('win');
+                    triggerScreenEffect('effect-win-flash');
                 } else if (conWins > playerWins) {
                     setMessage("☠ TOTAL DEFEAT... ☠", "Tap to restart");
                     showDynamicAnnouncement("LOST");
                     playSound('lose');
+                    triggerScreenEffect('effect-lose-mono');
                 } else {
                     setMessage("=== DRAW MATCH ===", "Tap to restart");
                     showDynamicAnnouncement("DRAW");
