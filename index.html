@@ -18,6 +18,8 @@
             --neon-purple: #bc13fe;
             --neon-yellow: #ffff00; /* テトリス用に追加 */
             --neon-orange: #f08300; /* リバーシ用に追加 */
+            --neon-lime: #99ff33; /* NEO COZENI JanJan用に追加 */
+            --neon-teal: #00ffcc; /* ELEMENT TACTICS用に追加 */
             --text-muted: #7fa886;
         }
 
@@ -96,6 +98,37 @@
         .burger-btn.active span:nth-child(1) { transform: translateY(8px) rotate(45deg); background-color: var(--neon-pink); }
         .burger-btn.active span:nth-child(2) { opacity: 0; }
         .burger-btn.active span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); background-color: var(--neon-pink); }
+
+        /* ハンバーガーボタン直下の小ラベル（Linked list／リンクリスト） */
+        .burger-label {
+            position: fixed;
+            top: 67px;
+            right: 20px;
+            z-index: 2000;
+            text-align: right;
+            font-size: 0.6rem;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+        .burger-label .burger-label-jp {
+            display: block;
+            font-size: 0.55rem;
+            letter-spacing: 0.5px;
+            text-transform: none;
+            opacity: 0.8;
+        }
+        @media (max-width: 600px) {
+            .burger-label {
+                top: 55px;
+                font-size: 0.52rem;
+            }
+            .burger-label .burger-label-jp {
+                font-size: 0.48rem;
+            }
+        }
 
         /* ----------------------------------
          * BGM ON/OFF ボタン
@@ -184,19 +217,58 @@
             z-index: 1999;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            gap: 40px;
+            gap: 26px;
+            padding: 90px 15px 30px;
+            overflow-y: auto;
             transition: right 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
         }
         .nav-menu.open { right: 0; }
+
+        /* ナビゲーションメニュー見出し（Linked list／リンクリスト） */
+        .nav-menu-title {
+            font-size: 1rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px var(--neon-blue);
+            text-align: center;
+        }
+        .nav-menu-title .nav-menu-title-jp {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: none;
+            color: var(--text-muted);
+            text-shadow: none;
+        }
+        .nav-menu-divider {
+            width: 65%;
+            height: 1px;
+            flex-shrink: 0;
+            background: linear-gradient(to right, transparent, var(--neon-green), transparent);
+        }
+
         .nav-menu a {
-            font-size: 1.3rem;
+            font-size: 1.15rem;
             font-weight: bold;
             letter-spacing: 2px;
             text-transform: uppercase;
             border: 1px solid transparent;
-            padding: 10px 20px;
+            padding: 8px 20px;
+            text-align: center;
+        }
+        .nav-menu a .nav-sub {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.68rem;
+            letter-spacing: 0.5px;
+            text-transform: none;
+            color: var(--text-muted);
+            opacity: 0.8;
         }
         .nav-menu a:hover {
             border: 1px solid var(--neon-pink);
@@ -616,8 +688,12 @@
             h2 { font-size: 1.5rem; }
             .btn-play-now { font-size: 1.1rem; padding: 12px 30px; }
             .btn-scroll-desc, .btn-scroll-other { font-size: 0.85rem; padding: 6px 20px; }
-            .nav-menu { width: 100%; right: -100%; }
-            
+            .nav-menu { width: 100%; right: -100%; padding: 75px 12px 24px; gap: 16px; }
+            .nav-menu-title { font-size: 0.85rem; }
+            .nav-menu-title .nav-menu-title-jp { font-size: 0.6rem; }
+            .nav-menu a { font-size: 0.95rem; padding: 6px 14px; }
+            .nav-menu a .nav-sub { font-size: 0.58rem; }
+
             .qr-container {
                 top: 70px;
             }
@@ -636,6 +712,34 @@
             background-color: var(--neon-orange);
             box-shadow: 0 0 20px var(--neon-orange);
         }
+
+        /* NEO COZENI JanJan のテーマ定義 */
+        .theme-coin {
+            background: radial-gradient(circle, rgba(35,45,10,1) 0%, rgba(1,5,2,1) 100%);
+            border-bottom-color: var(--neon-lime);
+            color: var(--neon-lime);
+        }
+        .theme-coin h1 {
+            text-shadow: 0 0 10px var(--neon-lime), 0 0 30px var(--neon-lime), 0 0 50px var(--neon-lime);
+        }
+        .theme-coin .btn-play-now {
+            background-color: var(--neon-lime);
+            box-shadow: 0 0 20px var(--neon-lime);
+        }
+
+        /* ELEMENT TACTICS のテーマ定義 */
+        .theme-tactics {
+            background: radial-gradient(circle, rgba(0,35,35,1) 0%, rgba(1,5,2,1) 100%);
+            border-bottom-color: var(--neon-teal);
+            color: var(--neon-teal);
+        }
+        .theme-tactics h1 {
+            text-shadow: 0 0 10px var(--neon-teal), 0 0 30px var(--neon-teal), 0 0 50px var(--neon-teal);
+        }
+        .theme-tactics .btn-play-now {
+            background-color: var(--neon-teal);
+            box-shadow: 0 0 20px var(--neon-teal);
+        }
     </style>
 </head>
 <body>
@@ -650,13 +754,19 @@
         <span></span>
         <span></span>
     </div>
+    <div class="burger-label">LINKED LIST<span class="burger-label-jp">（リンクリスト）</span></div>
 
     <nav class="nav-menu" id="navMenu">
-        <a href="#home" class="nav-item">CAR ROAD</a>
-        <a href="#space-shooter" class="nav-item">SPACE SHOOTER</a>
-        <a href="#brick-smasher" class="nav-item">CYBER BRICK</a>
-        <a href="#cyber-tetris" class="nav-item">CYBER TETRIS</a>
-        <a href="#reversi" class="nav-item">NEON REVERSI</a>
+        <div class="nav-menu-title">LINKED LIST<span class="nav-menu-title-jp">（リンクリスト）</span></div>
+        <div class="nav-menu-divider"></div>
+        <a href="#home" class="nav-item">CAR ROAD<span class="nav-sub">カーロードゲーム</span></a>
+        <a href="#space-shooter" class="nav-item">SPACE SHOOTER<span class="nav-sub">スペースシューター</span></a>
+        <a href="#coin-stack" class="nav-item">NEO COZENI JanJan<span class="nav-sub">ネオ・コゼニ・ジャンジャン</span></a>
+        <a href="#reversi" class="nav-item">NEON REVERSI<span class="nav-sub">ネオンリバーシ</span></a>
+        <a href="#element-tactics" class="nav-item">ELEMENT TACTICS<span class="nav-sub">エレメントタクティクス</span></a>
+        <a href="#brick-smasher" class="nav-item">CYBER BRICK<span class="nav-sub">サイバーブリックスマッシャー</span></a>
+        <a href="#cyber-tetris" class="nav-item">CYBER TETRIS<span class="nav-sub">サイバーテトリス</span></a>
+        <div class="nav-menu-divider"></div>
         <a href="#disclaimer" class="nav-item">免責事項（注意事項）</a>
     </nav>
 
@@ -693,7 +803,46 @@
         </div>
     </header>
 
-    <!-- GAME 3: CYBER BRICK SMASHER -->
+    <!-- GAME 3: NEO COZENI JanJan -->
+    <header id="coin-stack" class="theme-coin">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>NEO COZENI JanJan<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ 小銭積み上げゲーム ]</span><br><span style="color:var(--neon-lime); text-shadow: 0 0 10px var(--neon-lime);">ORIGINAL</span></h1>
+        <p class="tagline">同じ小銭を積み重ねて、より大きな金種へと進化させていく「スイカゲーム」風の落ち物パズル。1円玉から始まり、最終目標は伝説の1000円ホルダーの完成だ。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='cozeni janjan.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollCoinDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollCoinOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 4: NEON REVERSI -->
+    <header id="reversi" class="theme-reversi">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>NEON REVERSI<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ リバーシ ]</span><br><span style="color:var(--neon-orange); text-shadow: 0 0 10px var(--neon-orange);">OFFICIAL</span></h1>
+        <p class="tagline">盤上を支配する思考の戦い。AIの知能はプレイヤーの勝利とともに進化し、敗北の積み重ねによってその階級を落とす。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='Reversi.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollReversiDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollReversiOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 5: ELEMENT TACTICS - NEON EDITION -->
+    <header id="element-tactics" class="theme-tactics">
+        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
+        <h1>ELEMENT TACTICS<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ 戦術カードゲーム ]</span><br><span style="color:var(--neon-teal); text-shadow: 0 0 10px var(--neon-teal);">ORIGINAL</span></h1>
+        <p class="tagline">属性（エレメント）と数値の二段階で勝敗が決まる、読み合い特化型の戦術カードゲーム。心理戦・戦略・運が交錯する独自の緊張感を備えています。</p>
+        
+        <div class="hero-buttons">
+            <button class="btn-play-now" onclick="window.location.href='element_tactics.html'">PLAY GAME NOW</button>
+            <button class="btn-scroll-desc" id="scrollTacticsDescBtn">【ゲームの説明】</button>
+            <button class="btn-scroll-other" id="scrollTacticsOtherBtn">【他のGAMEへ】</button>
+        </div>
+    </header>
+
+    <!-- GAME 6: CYBER BRICK SMASHER -->
     <header id="brick-smasher" class="theme-brick">
         <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
         <h1>CYBER BRICK SMASHER<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ ブロック崩し ]</span><br><span style="color:var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);">OFFICIAL</span></h1>
@@ -706,7 +855,7 @@
         </div>
     </header>
 
-    <!-- GAME 4: CYBER TETRIS -->
+    <!-- GAME 7: CYBER TETRIS -->
     <header id="cyber-tetris" class="theme-tetris">
         <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
         <h1>CYBER TETRIS<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ テトリス ]</span><br><span style="color:var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink);">OFFICIAL</span></h1>
@@ -716,19 +865,6 @@
             <button class="btn-play-now" onclick="window.location.href='tetris.html'">PLAY GAME NOW</button>
             <button class="btn-scroll-desc" id="scrollTetrisDescBtn">【ゲームの説明】</button>
             <button class="btn-scroll-other" id="scrollTetrisOtherBtn">【他のGAMEへ】</button>
-        </div>
-    </header>
-
-    <!-- GAME 5: NEON REVERSI -->
-    <header id="reversi" class="theme-reversi">
-        <p class="welcome-text">-- INSERT COIN TO PLAY --</p>
-        <h1>NEON REVERSI<br><span style="font-size: 1.2rem; color: #fff; text-shadow: 0 0 5px #fff; letter-spacing: 2px;">[ リバーシ ]</span><br><span style="color:var(--neon-orange); text-shadow: 0 0 10px var(--neon-orange);">OFFICIAL</span></h1>
-        <p class="tagline">盤上を支配する思考の戦い。AIの知能はプレイヤーの勝利とともに進化し、敗北の積み重ねによってその階級を落とす。</p>
-        
-        <div class="hero-buttons">
-            <button class="btn-play-now" onclick="window.location.href='Reversi.html'">PLAY GAME NOW</button>
-            <button class="btn-scroll-desc" id="scrollReversiDescBtn">【ゲームの説明】</button>
-            <button class="btn-scroll-other" id="scrollReversiOtherBtn">【他のGAMEへ】</button>
         </div>
     </header>
 
@@ -778,6 +914,72 @@
             </div>
         </section>
 
+        <!-- NEO COZENI JanJan Description -->
+        <section id="coin-description">
+            <h2>NEO COZENI JanJan の説明</h2>
+            <p>『NEO COZENI JanJan』は、同じ小銭を積み重ねて上位の金種へと進化させていく、スイカゲーム風の落ち物パズルです。レトロ・アンバーCRT筐体を思わせる質感で、伝説の1000円ホルダー完成を目指します。</p>
+            <p>画面をドラッグして狙いを定め、落下させて積み上げるだけのシンプル操作。しかし積み上がった山の頭頂部がデッドラインを越えると即ゲームオーバーとなる、絶妙なバランス勝負です。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-lime);">
+                    <h3>🪙 6段階の進化システム</h3>
+                    <p>1円から500円まで、同じ金種を規定枚数そろえると1段階上の小銭へ進化。最終形態は伝説の1000円ホルダーだ。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-lime);">
+                    <h3>⚠️ 迫るデッドライン</h3>
+                    <p>スコアが貯まるごとにゲームオーバーラインが徐々に下降。積める高さが減っていくスリリングな難易度上昇を搭載。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-lime);">
+                    <h3>💾 ハイスコア記録＆自動モード</h3>
+                    <p>直近10ゲームの履歴と歴代ベストを自動保存。自動モードなら小銭が一定間隔で落下し続け、放置プレイも楽しめる。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEON REVERSI Description -->
+        <section id="reversi-description">
+            <h2>NEON REVERSI の説明</h2>
+            <p>『NEON REVERSI』は、プレイヤーの対局結果に応じてAIが成長・衰退する、進化したリバーシ・シミュレーターです。</p>
+            <p>頭脳ゲームにAI学習を装備。レベルが上がるごとに強くなるAIが、あなたの頭脳の限界を試します。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-orange);">
+                    <h3>🧠 AI学習システム</h3>
+                    <p>プレイヤーが勝利するたびにAIは学習し、次のレベルで強さを増します。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-orange);">
+                    <h3>🕒 AIレベルアップ規定</h3>
+                    <p>プレイヤーが１回勝利すると、AIの知能レベルは一段階アップします。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-orange);">
+                    <h3>📉 AIレベルダウン規定</h3>
+                    <p>プレイヤーが2回敗北すると、AIの知能レベルは一段階ダウンします。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ELEMENT TACTICS Description -->
+        <section id="tactics-description">
+            <h2>ELEMENT TACTICS - NEON EDITION の説明</h2>
+            <p>『ELEMENT TACTICS - NEON EDITION』は、属性（エレメント）と数値の二段階で勝敗が決まる、読み合い特化型の戦術カードゲームです。シンプルなルールの中に、心理戦・戦略・運が交錯する独自の緊張感を備えています。</p>
+            <p>プレイヤーは「子」として、親（CPU）が宣言する属性を読み取り、最適なカードを選択。弱いカードでも勝てるロマンと、強いカードを切るリスクがゲームの核心です。</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card" style="border-color: var(--neon-teal);">
+                    <h3>⚡ 親の宣言システム</h3>
+                    <p>CPUが最初に属性だけを宣言し、数字は伏せたまま進行。親は1回目のみ+3PTを獲得し、流れを作る存在となります。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-teal);">
+                    <h3>🔥 弱いカードでも勝てる</h3>
+                    <p>属性勝利は6PTを獲得できるため、数字が弱くても逆転可能。完全勝利よりも「ギリギリ勝ち」が戦略の中心です。</p>
+                </div>
+                <div class="feature-card" style="border-color: var(--neon-teal);">
+                    <h3>🧠 心理戦×戦略×運</h3>
+                    <p>強いカードを切るか、弱いカードで読み勝つか。親の宣言をどう解釈するかが勝敗を左右する頭脳バトルです。</p>
+                </div>
+            </div>
+        </section>
+
         <!-- CYBER BRICK Description -->
         <section id="brick-description">
             <h2>CYBER BRICK SMASHER の説明</h2>
@@ -821,27 +1023,6 @@
                 </div>
             </div>
 
-        </section>
-        <!-- NEON REVERSI Description -->
-        <section id="reversi-description">
-            <h2>NEON REVERSI の説明</h2>
-            <p>『NEON REVERSI』は、プレイヤーの対局結果に応じてAIが成長・衰退する、進化したリバーシ・シミュレーターです。</p>
-            <p>頭脳ゲームにAI学習を装備。レベルが上がるごとに強くなるAIが、あなたの頭脳の限界を試します。</p>
-            
-            <div class="feature-grid">
-                <div class="feature-card" style="border-color: var(--neon-orange);">
-                    <h3>🧠 AI学習システム</h3>
-                    <p>プレイヤーが勝利するたびにAIは学習し、次のレベルで強さを増します。</p>
-                </div>
-                <div class="feature-card" style="border-color: var(--neon-orange);">
-                    <h3>🕒 AIレベルアップ規定</h3>
-                    <p>プレイヤーが１回勝利すると、AIの知能レベルは一段階アップします。</p>
-                </div>
-                <div class="feature-card" style="border-color: var(--neon-orange);">
-                    <h3>📉 AIレベルダウン規定</h3>
-                    <p>プレイヤーが2回敗北すると、AIの知能レベルは一段階ダウンします。</p>
-                </div>
-            </div>
         </section>
 
         <section id="disclaimer">
@@ -917,10 +1098,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const scrollSpaceOtherBtn = document.getElementById('scrollSpaceOtherBtn');
-    const brickSmasherSection = document.getElementById('brick-smasher');
-    if (scrollSpaceOtherBtn && brickSmasherSection) {
+    const coinStackSection = document.getElementById('coin-stack');
+    if (scrollSpaceOtherBtn && coinStackSection) {
         scrollSpaceOtherBtn.addEventListener('click', () => {
-            brickSmasherSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            coinStackSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    const scrollCoinDescBtn = document.getElementById('scrollCoinDescBtn');
+    const coinDescriptionSection = document.getElementById('coin-description');
+    if (scrollCoinDescBtn && coinDescriptionSection) {
+        scrollCoinDescBtn.addEventListener('click', () => {
+            coinDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    const scrollCoinOtherBtn = document.getElementById('scrollCoinOtherBtn');
+    const reversiSectionForCoin = document.getElementById('reversi');
+    if (scrollCoinOtherBtn && reversiSectionForCoin) {
+        scrollCoinOtherBtn.addEventListener('click', () => {
+            reversiSectionForCoin.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }
 
@@ -949,10 +1146,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const scrollTetrisOtherBtn = document.getElementById('scrollTetrisOtherBtn');
-    const reversiHeaderSection = document.getElementById('reversi');
-    if (scrollTetrisOtherBtn && reversiHeaderSection) {
+    const homeSectionFromTetris = document.getElementById('home');
+    if (scrollTetrisOtherBtn && homeSectionFromTetris) {
         scrollTetrisOtherBtn.addEventListener('click', () => {
-            reversiHeaderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            homeSectionFromTetris.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }
 
@@ -1029,12 +1226,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 【他のGAMEへ】ボタン → 先頭(home)セクションへループして戻る
+    // 【他のGAMEへ】ボタン → element-tactics セクションへスクロール
     const scrollReversiOtherBtn = document.getElementById('scrollReversiOtherBtn');
-    const homeSection = document.getElementById('home');
-    if (scrollReversiOtherBtn && homeSection) {
+    const elementTacticsSectionFromReversi = document.getElementById('element-tactics');
+    if (scrollReversiOtherBtn && elementTacticsSectionFromReversi) {
         scrollReversiOtherBtn.addEventListener('click', () => {
-            homeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            elementTacticsSectionFromReversi.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+});
+
+// ============================================================
+// ▼ ここから ELEMENT TACTICS - NEON EDITION 用の追記スクリプト ▼
+// NEON REVERSI用のブロックと同様に、既存ロジックには手を加えず、
+// 別のDOMContentLoadedリスナーとして安全に追記しています。
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // 【ゲームの説明】ボタン → tactics-description セクションへスクロール
+    const scrollTacticsDescBtn = document.getElementById('scrollTacticsDescBtn');
+    const tacticsDescriptionSection = document.getElementById('tactics-description');
+    if (scrollTacticsDescBtn && tacticsDescriptionSection) {
+        scrollTacticsDescBtn.addEventListener('click', () => {
+            tacticsDescriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    // 【他のGAMEへ】ボタン → brick-smasher セクションへスクロール
+    const scrollTacticsOtherBtn = document.getElementById('scrollTacticsOtherBtn');
+    const brickSmasherSectionFromTactics = document.getElementById('brick-smasher');
+    if (scrollTacticsOtherBtn && brickSmasherSectionFromTactics) {
+        scrollTacticsOtherBtn.addEventListener('click', () => {
+            brickSmasherSectionFromTactics.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }
 });
